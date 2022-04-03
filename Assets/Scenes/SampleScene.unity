@@ -185,6 +185,7 @@ GameObject:
   - component: {fileID: 1412848653}
   - component: {fileID: 1412848656}
   - component: {fileID: 1412848655}
+  - component: {fileID: 1412848657}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -200,7 +201,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1412848651}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 416.1, y: 109.48, z: 166.7}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -294,6 +295,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   motor: {fileID: 1412848654}
+  speed: 2000
+  mouseSensitivity: 40
+--- !u!114 &1412848657
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1412848651}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20377b6a940c2474cac7a6202d16927e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1687258581
 GameObject:
   m_ObjectHideFlags: 0
@@ -460,7 +475,7 @@ MonoBehaviour:
   waterPreview: {fileID: 0}
   waterLevel: 0
   generationEquation: (-y/64)+1 + noise2(x, z)
-  seed: 0
+  seed: 112
   chunkSize: 16
   chunkHeight: 128
   gradient:
@@ -519,6 +534,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: adcf1a52731d4139bb01829ba7360aa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  maxViewDst: 8
   viewer: {fileID: 1412848652}
   generator: {fileID: 2127954275}
   mapParent: {fileID: 2127954276}

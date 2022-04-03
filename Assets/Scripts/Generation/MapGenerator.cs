@@ -27,14 +27,40 @@ public class MapGenerator : MonoBehaviour
     
     private Queue<MapThreadInfo<MapData>> mapDataThreadInfoQueue = new Queue<MapThreadInfo<MapData>>();
 
+    // private EquationHandler equationHandler;
+
+
+    //Temp
+    
+    private static FastNoiseLite noiseWarp;
+
+    
+
+    
+    private void Awake()
+    {
+        Noise t;
+        
+        SetupNoise(seed);
+        // equationHandler = new EquationHandler(generationEquation, seed);
+    }
+
+    // private float GetEquationResult(float x, float y, float z)
+    // {
+    //     return (-y/64)+1 + noise.GetNoise( x, z);
+    // }
+
     private void Update()
     {
         if (mapDataThreadInfoQueue.Count > 0)
         {
             for (int i = 0; i < mapDataThreadInfoQueue.Count; i++)
             {
-                MapThreadInfo<MapData> threadInfo = mapDataThreadInfoQueue.Dequeue();
-                threadInfo.callback(threadInfo.parameter);
+                lock (mapDataThreadInfoQueue)
+                {
+                    MapThreadInfo<MapData> threadInfo = mapDataThreadInfoQueue.Dequeue();
+                    threadInfo.callback(threadInfo.parameter);
+                }
             }
         }
     }
@@ -62,9 +88,6 @@ public class MapGenerator : MonoBehaviour
     
     private MapData GenerateMapData(Vector2 offset)
     {
-        EquationHandler equationHandler = new EquationHandler(generationEquation, seed);
-        // EquationHandler equationHandler = new EquationHandler(generationEquation, noiseList);
-
         float[,,] finalMap = new float[chunkSize, chunkHeight, chunkSize];
         for (int x = 0; x < chunkSize; x++)
         {
@@ -72,7 +95,7 @@ public class MapGenerator : MonoBehaviour
             {
                 for (int y = 0; y < chunkHeight; y++)
                 {
-                    finalMap[x, y, z] = equationHandler.EquationResult(x+offset.x,y,z+offset.y);
+                    finalMap[x, y, z] = VanillaFunction.GetResult(x+offset.x,y,z+offset.y);
                 }
             }
         }

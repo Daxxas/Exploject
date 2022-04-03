@@ -6,10 +6,6 @@ using org.mariuszgromada.math.mxparser;
 using UnityEngine;
 using Function = org.mariuszgromada.math.mxparser.Function;
 
-
-/// <summary>
-/// Old equation handler written to parse string to get formula, this is an operation that costs a lot of ressources, it's better when compiled
-/// </summary>
 public class EquationHandler
 {
     private string currentEquation;

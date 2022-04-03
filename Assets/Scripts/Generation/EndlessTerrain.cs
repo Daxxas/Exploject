@@ -17,9 +17,9 @@ public class EndlessTerrain : MonoBehaviour
     private List<TerrainChunk> terrainChunksVisibleLastUpdate = new List<TerrainChunk>();
     private void Start()
     {
-        chunkSize = generator.chunkSize;
+        chunkSize = generator.chunkSize; 
         chunksVisibleInViewDst = Mathf.RoundToInt(maxViewDst / chunkSize);
-        
+        Debug.Log($"chunksVisibleInViewDst: {chunksVisibleInViewDst}");
     }
 
     private void Update()
@@ -45,7 +45,8 @@ public class EndlessTerrain : MonoBehaviour
             for (int xOffset = -chunksVisibleInViewDst; xOffset <= chunksVisibleInViewDst; xOffset++)
             {
                 Vector2 viewedChunkCoord = new Vector2(currentChunkCoordX + xOffset, currentChunkCoordZ + zOffset);
-
+                Debug.Log(viewedChunkCoord);
+                
                 if (terrainChunkDic.ContainsKey(viewedChunkCoord))
                 {
                     terrainChunkDic[viewedChunkCoord].UpdateChunk();
