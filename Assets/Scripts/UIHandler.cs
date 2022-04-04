@@ -18,7 +18,7 @@ public class UIHandler : MonoBehaviour
 
     public void UpdateEquation()
     {
-        mapGenerator.generationEquation = equationField.text;
+        // mapGenerator.generationEquation = equationField.text;
     }
 
     public void UpdateSeed()

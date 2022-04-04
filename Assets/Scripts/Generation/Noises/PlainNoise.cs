@@ -1,4 +1,4 @@
-﻿public class PlainNoise
+﻿public static class PlainNoise
 {
     private static bool isInit = false; 
     
@@ -15,8 +15,8 @@
         isInit = true;
     }
 
-    public static float GetNoise(float x, float y, float z)
+    public static float GetNoise(float x, float y)
     {
-        return noise.GetNoise(x, z);
+        return noise.GetNoise(x, y);
     }
 }

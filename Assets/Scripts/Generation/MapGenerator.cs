@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using UnityEngine;
-using Random = System.Random;
 
 public class MapGenerator : MonoBehaviour
 {
@@ -13,7 +12,6 @@ public class MapGenerator : MonoBehaviour
     public float waterLevel;
     private bool waterOn = true;
     
-    public string generationEquation = "(-y/64)+1 + noise2(x, z)";
     public int seed;
     
     public int chunkSize = 16;
@@ -31,24 +29,10 @@ public class MapGenerator : MonoBehaviour
 
 
     //Temp
-    
-    private static FastNoiseLite noiseWarp;
-
-    
-
-    
     private void Awake()
     {
-        Noise t;
-        
-        SetupNoise(seed);
-        // equationHandler = new EquationHandler(generationEquation, seed);
+        PlainNoise.SetupNoise(seed);
     }
-
-    // private float GetEquationResult(float x, float y, float z)
-    // {
-    //     return (-y/64)+1 + noise.GetNoise( x, z);
-    // }
 
     private void Update()
     {
