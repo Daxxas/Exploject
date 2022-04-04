@@ -72,14 +72,24 @@ public class MapGenerator : MonoBehaviour
     
     private MapData GenerateMapData(Vector2 offset)
     {
-        float[,,] finalMap = new float[chunkSize, chunkHeight, chunkSize];
-        for (int x = 0; x < chunkSize; x++)
+        // Generate Map Data of chunk + the border of the next chunk, so we know if we have to
+        // place vertices on the border of the current chunk
+        float[,,] finalMap = new float[chunkSize+2, chunkHeight+2, chunkSize+2];
+        for (int x = 0; x < chunkSize+2; x++)
         {
-            for (int z = 0; z < chunkSize; z++)
+            for (int z = 0; z < chunkSize+2; z++)
             {
-                for (int y = 0; y < chunkHeight; y++)
+                for (int y = 0; y < chunkHeight+2; y++)
                 {
-                    finalMap[x, y, z] = VanillaFunction.GetResult(x+offset.x,y,z+offset.y);
+                    try
+                    {
+                        finalMap[x, y, z] = VanillaFunction.GetResult(x + offset.x-1, y-1, z + offset.y-1);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError(e);
+                        Debug.LogError($"x: {x}, y: {y}, z: {z}");
+                    }
                 }
             }
         }
@@ -113,24 +123,36 @@ public class MapGenerator : MonoBehaviour
 
         MeshFilter blockMesh = Instantiate(cube, Vector3.zero, Quaternion.identity).GetComponent<MeshFilter>();
 
-        for (int x = 0; x < chunkSize; x++)
+        for (int x = 0; x < chunkSize+1; x++)
         {
-            for (int y = 0; y < chunkHeight; y++)
+            for (int y = 0; y < chunkHeight+1; y++)
             {
-                for (int z = 0; z < chunkSize; z++)
+                for (int z = 0; z < chunkSize+1; z++)
                 {
-                    float noiseBlock = map[x, y, z];
+                    bool isInChunk = 
+                    float noiseBlock = map[x+1, y+1, z+1];
 
+                    int aboveY = y+1;
+                    bool reachCeiling = false;
+                    if (y >= chunkHeight-1)
+                    {
+                        // Setting aboveY not be out of bound of array
+                        aboveY = y;
+                        reachCeiling = true;
+                    }
+                    float aboveBlock = map[x, aboveY, z];
 
-                    // if (x == 0 && z == 0)
-                    // {
-                    //     Debug.Log(map[x,y,z]);
-                    // }
-                    
-                    if (noiseBlock > threshold)
+                    if (noiseBlock > threshold && (IsBorder(x,y,z,threshold,map) || reachCeiling))
                     {
                         blockMesh.transform.position = new Vector3(x, y, z);
+                        // Set mesh vertices
+                        List<Vector3> vertices = new List<Vector3>();
+                        // Center
+                        vertices.Add(new Vector3(x, y, z));
+                        // Borders
                         
+                        
+                        Mesh mesh = new Mesh();
                         CombineInstance ci = new CombineInstance()
                         {
                             mesh = blockMesh.mesh,
@@ -188,6 +210,29 @@ public class MapGenerator : MonoBehaviour
 
             g.AddComponent<MeshCollider>();
         }
+    }
+
+    private bool IsBorder(int x, int y, int z, float threshold, float[,,] map)
+    {
+        bool isBorder = false;
+        if (map[x, y, z] > threshold)
+        {
+            for (int xOffset = -1; xOffset <= 1; xOffset++)
+            {
+                for (int yOffset = -1; yOffset <= 1; yOffset++)
+                {
+                    for (int zOffset = -1; zOffset < 1; zOffset++)
+                    {
+                        if (map[x + xOffset, y + yOffset, z + zOffset] < threshold)
+                        {
+                            isBorder = true;
+                        }
+                    }
+                }
+            }
+
+        }
+        return isBorder;
     }
     
     #endregion

@@ -45,7 +45,6 @@ public class EndlessTerrain : MonoBehaviour
             for (int xOffset = -chunksVisibleInViewDst; xOffset <= chunksVisibleInViewDst; xOffset++)
             {
                 Vector2 viewedChunkCoord = new Vector2(currentChunkCoordX + xOffset, currentChunkCoordZ + zOffset);
-                Debug.Log(viewedChunkCoord);
                 
                 if (terrainChunkDic.ContainsKey(viewedChunkCoord))
                 {
