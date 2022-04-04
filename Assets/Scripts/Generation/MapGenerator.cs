@@ -15,6 +15,13 @@ public class MapGenerator : MonoBehaviour
     public int seed;
     
     public int chunkSize = 16;
+    private int supportedChunkSize => chunkSize + 2;
+    
+    // Chunk idea 
+    // 0  1  2  3  4  5  6  7  8  9 10 12 13 14 15 16 17
+    // .  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  .
+    // 
+    
     [SerializeField] private int chunkHeight;
 
     private const float threshold = 0;
@@ -49,6 +56,7 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
+    // Called when TerrainChunk is initialized 
     public void RequestMapData(Action<MapData> callback, Vector2 offset)
     {
         ThreadStart threadStart = delegate
@@ -70,20 +78,19 @@ public class MapGenerator : MonoBehaviour
         
     }
     
+    // Called in thread from RequestMapData 
     private MapData GenerateMapData(Vector2 offset)
     {
-        // Generate Map Data of chunk + the border of the next chunk, so we know if we have to
-        // place vertices on the border of the current chunk
-        float[,,] finalMap = new float[chunkSize+2, chunkHeight+2, chunkSize+2];
-        for (int x = 0; x < chunkSize+2; x++)
+        float[,,] finalMap = new float[supportedChunkSize, chunkHeight, supportedChunkSize];
+        for (int x = 0; x < supportedChunkSize; x++)
         {
-            for (int z = 0; z < chunkSize+2; z++)
+            for (int z = 0; z < supportedChunkSize; z++)
             {
-                for (int y = 0; y < chunkHeight+2; y++)
+                for (int y = 0; y < chunkHeight; y++)
                 {
                     try
                     {
-                        finalMap[x, y, z] = VanillaFunction.GetResult(x + offset.x-1, y-1, z + offset.y-1);
+                        finalMap[x, y, z] = VanillaFunction.GetResult(x + offset.x, y, z + offset.y);
                     }
                     catch (Exception e)
                     {
@@ -97,62 +104,37 @@ public class MapGenerator : MonoBehaviour
         return new MapData(finalMap);
     }
 
-    public void ShowWater()
-    {
-        waterOn = !waterOn;
-        waterPreview.SetActive(waterOn);
-    }
-    
-    public void SetWaterLevel(float level)
-    {
-        waterLevel = level;
-    }
-    
-    public void UpdateWaterPreview()
-    {
-        waterPreview.transform.position = new Vector3((chunkSize / 2), (waterLevel/2), (chunkSize / 2));
-        waterPreview.transform.localScale = new Vector3(chunkSize - 1.01f, waterLevel, chunkSize + .99f);
-    }
-    
-
     #region Mesh Handling
     
+    // Called when TerrainChunk receives MapData with OnMapDataReceive
     public List<CombineInstance> CreateMeshData(float[,,] map)
     {
         List<CombineInstance> blockData = new List<CombineInstance>();
 
         MeshFilter blockMesh = Instantiate(cube, Vector3.zero, Quaternion.identity).GetComponent<MeshFilter>();
 
-        for (int x = 0; x < chunkSize+1; x++)
+        for (int x = 0; x < supportedChunkSize-2; x++)
         {
-            for (int y = 0; y < chunkHeight+1; y++)
+            for (int y = 0; y < chunkHeight; y++)
             {
-                for (int z = 0; z < chunkSize+1; z++)
+                for (int z = 0; z < supportedChunkSize-2; z++)
                 {
-                    bool isInChunk = 
-                    float noiseBlock = map[x+1, y+1, z+1];
+                    int chunkBlockX = x + 1;
+                    int chunkBlockZ = z + 1;
+                    
+                    float noiseBlock = map[chunkBlockX, y, chunkBlockZ];
 
-                    int aboveY = y+1;
-                    bool reachCeiling = false;
-                    if (y >= chunkHeight-1)
+                    if (noiseBlock > threshold && IsBorder(chunkBlockX,y,chunkBlockZ,threshold,map))
                     {
-                        // Setting aboveY not be out of bound of array
-                        aboveY = y;
-                        reachCeiling = true;
-                    }
-                    float aboveBlock = map[x, aboveY, z];
-
-                    if (noiseBlock > threshold && (IsBorder(x,y,z,threshold,map) || reachCeiling))
-                    {
-                        blockMesh.transform.position = new Vector3(x, y, z);
+                        blockMesh.transform.position = new Vector3(chunkBlockX, y, chunkBlockZ);
                         // Set mesh vertices
                         List<Vector3> vertices = new List<Vector3>();
                         // Center
-                        vertices.Add(new Vector3(x, y, z));
+                        vertices.Add(new Vector3(chunkBlockX, y, chunkBlockZ));
                         // Borders
-                        
-                        
                         Mesh mesh = new Mesh();
+
+                        mesh.SetVertices(vertices);
                         CombineInstance ci = new CombineInstance()
                         {
                             mesh = blockMesh.mesh,
@@ -170,6 +152,7 @@ public class MapGenerator : MonoBehaviour
         return blockData;
     }
 
+    // Called by TerrainChunk after CreateMeshData
     public List<List<CombineInstance>> SeparateMeshData(List<CombineInstance> blockData)
     {
         List<List<CombineInstance>> blockDataLists = new List<List<CombineInstance>>();
@@ -194,6 +177,7 @@ public class MapGenerator : MonoBehaviour
         return blockDataLists;
     }
 
+    // Called by TerrainChunk after SeparateMeshData
     public void CreateMesh(List<List<CombineInstance>> blockDataLists, Transform parent)
     {
         foreach (List<CombineInstance> data in blockDataLists)
@@ -215,19 +199,35 @@ public class MapGenerator : MonoBehaviour
     private bool IsBorder(int x, int y, int z, float threshold, float[,,] map)
     {
         bool isBorder = false;
+
         if (map[x, y, z] > threshold)
         {
             for (int xOffset = -1; xOffset <= 1; xOffset++)
             {
-                for (int yOffset = -1; yOffset <= 1; yOffset++)
+                // int currentX = (x + xOffset < supportedChunkSize && x + xOffset > 0) ? xOffset : 0;
+
+                if (map[x + xOffset, y, z] < threshold)
                 {
-                    for (int zOffset = -1; zOffset < 1; zOffset++)
-                    {
-                        if (map[x + xOffset, y + yOffset, z + zOffset] < threshold)
-                        {
-                            isBorder = true;
-                        }
-                    }
+                    isBorder = true;
+                }
+            }
+            for (int yOffset = -1; yOffset <= 1; yOffset++)
+            {
+                int currentY = (y + yOffset < chunkHeight && y + yOffset > 0) ? yOffset : 0;
+
+                if (map[x, y + currentY, z] < threshold)
+                {
+                    isBorder = true;
+                }
+            }
+
+            for (int zOffset = -1; zOffset <= 1; zOffset++)
+            {
+                // int currentZ = (z + zOffset < supportedChunkSize && z + zOffset > 0) ? zOffset : 0;
+
+                if (map[x, y , z + zOffset] < threshold)
+                {
+                    isBorder = true;
                 }
             }
 

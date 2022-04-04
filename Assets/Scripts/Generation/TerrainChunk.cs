@@ -7,7 +7,8 @@ public class TerrainChunk
     private Vector2 position;
     private GameObject chunkObject;
     private Bounds bounds;
-        
+    
+    // Called by Endless Terrain when it needs a new chunk
     public TerrainChunk(Vector2 coord, int size, MapGenerator generator, Transform mapParent)
     {
         this.generator = generator;
@@ -18,7 +19,8 @@ public class TerrainChunk
         chunkObject.transform.parent = mapParent;
         chunkObject.transform.position = positionV3;
         // SetVisible(false);
-            
+        
+        // Ask generator to get MapData with RequestMapData & start generating mesh with OnMapDataReceive
         generator.RequestMapData(OnMapDataReceive, position);
     }
 
