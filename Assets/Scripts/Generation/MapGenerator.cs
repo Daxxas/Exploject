@@ -234,7 +234,31 @@ public class MapGenerator : MonoBehaviour
         }
         return isBorder;
     }
-    
+
+    private LinkedList<Vector3> GetNeighbors(int x, int y, int z, float[,,] map, float threshold)
+    {
+        LinkedList<Vector3> neighbors = new LinkedList<Vector3>();
+        
+        for (int xOffset = -1; xOffset <= 1; xOffset++)
+        {
+            for (int yOffset = -1; yOffset <= 1; yOffset++)
+            {
+                int currentY = (y + yOffset < chunkHeight && y + yOffset > 0) ? yOffset : 0;
+
+                for (int zOffset = -1; zOffset <= 1; zOffset++)
+                {
+                    if (IsBorder(x + xOffset, y + currentY, z + zOffset, threshold, map))
+                    {
+                        neighbors.AddLast(new Vector3(x + xOffset, y + currentY, z + zOffset));
+                    }
+                }
+
+            }
+        }
+
+        return neighbors;
+    }
+
     #endregion
 
 
