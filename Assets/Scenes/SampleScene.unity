@@ -485,6 +485,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cubePrefab: {fileID: 1534796887566534916, guid: 003d608c44f531c4493b4e3ef0e100a9, type: 3}
+  testMaterial: {fileID: 2100000, guid: e89e77d531def9b4ca956101529f928a, type: 2}
 --- !u!1 &2127954274
 GameObject:
   m_ObjectHideFlags: 0
