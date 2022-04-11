@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Jobs;
 using UnityEngine;
 
 public class TerrainChunk
@@ -21,7 +23,19 @@ public class TerrainChunk
         // SetVisible(false);
         
         // Ask generator to get MapData with RequestMapData & start generating mesh with OnMapDataReceive
-        generator.RequestMapData(OnMapDataReceive, position);
+        // generator.RequestMapData(OnMapDataReceive, position);
+        NativeArray<float> returnMap = new NativeArray<float>(generator.chunkHeight * generator.supportedChunkSize * generator.supportedChunkSize,
+            Allocator.TempJob);
+        var job = new MapGenerator.GenerateMapDataJob()
+        {
+            position = position,
+            supportedChunkSize = generator.supportedChunkSize,
+            chunkHeight = generator.chunkHeight,
+            returnMap = returnMap
+        };
+        
+        job.Schedule().Complete();
+        
     }
 
     void OnMapDataReceive(MapData mapData)
