@@ -2,14 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Unity.Burst;
-using Unity.Collections;
-using Unity.Jobs;
 using UnityEngine;
 
 public class MapGenerator : MonoBehaviour
 {
-    [SerializeField] public static GameObject cube;
+    [SerializeField] private GameObject cube;
     [SerializeField] private Material meshMaterial;
     [SerializeField] private GameObject waterPreview;
     public float waterLevel;
@@ -17,14 +14,15 @@ public class MapGenerator : MonoBehaviour
     
     public int seed;
     
-    public static int chunkSize = 16;
-    private static int chunkHeight = 256;
-    private static int supportedChunkSize => chunkSize + 2;
+    public int chunkSize = 16;
+    private int supportedChunkSize => chunkSize + 2;
     
     // Chunk idea 
     // 0  1  2  3  4  5  6  7  8  9 10 12 13 14 15 16 17
     // .  *  *  *  *  *  *  *  *  *  *  *  *  *  *  *  .
     // 
+    
+    [SerializeField] private int chunkHeight;
 
     private const float threshold = 0;
     
@@ -37,94 +35,6 @@ public class MapGenerator : MonoBehaviour
     // private EquationHandler equationHandler;
 
 
-    [BurstCompile(CompileSynchronously = true)]
-    public struct GenerateJob : IJob
-    {
-        public Vector3 position;
-        public NativeArray<float> mapData;
-        public GameObject chunkObject;
-        public void Execute()
-        {
-            MapData mapData = GenerateMapData(position);
-            
-            List<CombineInstance> blockData = CreateMeshData(mapData.noiseMap);
-        
-            var blockDataLists = SeparateMeshData(blockData);
-        
-            CreateMesh(blockDataLists, chunkObject.transform);
-        }
-        
-        public MapData GenerateMapData(Vector2 offset)
-        {
-            float[,,] finalMap = new float[supportedChunkSize, chunkHeight, supportedChunkSize];
-            for (int x = 0; x < supportedChunkSize; x++)
-            {
-                for (int z = 0; z < supportedChunkSize; z++)
-                {
-                    for (int y = 0; y < chunkHeight; y++)
-                    {
-                        try
-                        {
-                            finalMap[x, y, z] = VanillaFunction.GetResult(x + offset.x, y, z + offset.y);
-                        }
-                        catch (Exception e)
-                        {
-                            Debug.LogError(e);
-                            Debug.LogError($"x: {x}, y: {y}, z: {z}");
-                        }
-                    }
-                }
-            }
-
-            return new MapData(finalMap);
-        }
-        
-        public List<CombineInstance> CreateMeshData(float[,,] map)
-        {
-            List<CombineInstance> blockData = new List<CombineInstance>();
-
-            MeshFilter blockMesh = Instantiate(cube, Vector3.zero, Quaternion.identity).GetComponent<MeshFilter>();
-
-            for (int x = 0; x < supportedChunkSize-2; x++)
-            {
-                for (int y = 0; y < chunkHeight; y++)
-                {
-                    for (int z = 0; z < supportedChunkSize-2; z++)
-                    {
-                        int chunkBlockX = x + 1;
-                        int chunkBlockZ = z + 1;
-                    
-                        float noiseBlock = map[chunkBlockX, y, chunkBlockZ];
-
-                        if (noiseBlock > threshold && IsBorder(chunkBlockX,y,chunkBlockZ,threshold,map))
-                        {
-                            blockMesh.transform.position = new Vector3(chunkBlockX, y, chunkBlockZ);
-                            // Set mesh vertices
-                            List<Vector3> vertices = new List<Vector3>();
-                            // Center
-                            vertices.Add(new Vector3(chunkBlockX, y, chunkBlockZ));
-                            // Borders
-                            Mesh mesh = new Mesh();
-
-                            mesh.SetVertices(vertices);
-                            CombineInstance ci = new CombineInstance()
-                            {
-                                mesh = blockMesh.mesh,
-                                transform = blockMesh.transform.localToWorldMatrix
-                            };
-                        
-                            blockData.Add(ci);
-                        }
-                    }
-                }
-            }
-        
-            DestroyImmediate(blockMesh.gameObject);
-
-            return blockData;
-        }
-    }
-    
     //Temp
     private void Awake()
     {
@@ -169,7 +79,7 @@ public class MapGenerator : MonoBehaviour
     }
     
     // Called in thread from RequestMapData 
-    public MapData GenerateMapData(Vector2 offset)
+    private MapData GenerateMapData(Vector2 offset)
     {
         float[,,] finalMap = new float[supportedChunkSize, chunkHeight, supportedChunkSize];
         for (int x = 0; x < supportedChunkSize; x++)

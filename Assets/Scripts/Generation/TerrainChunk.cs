@@ -1,6 +1,4 @@
 ﻿using System.Collections.Generic;
-using Unity.Burst;
-using Unity.Jobs;
 using UnityEngine;
 
 public class TerrainChunk
@@ -9,26 +7,6 @@ public class TerrainChunk
     private Vector2 position;
     private GameObject chunkObject;
     private Bounds bounds;
-
-    
-    [BurstCompile(CompileSynchronously = true)]
-    public struct GenerateJob : IJob
-    {
-        public Vector3 position;
-        public MapGenerator generator;
-        public MapData mapData;
-        public GameObject chunkObject;
-        public void Execute()
-        {
-            MapData mapData = generator.GenerateMapData(position);
-            
-            List<CombineInstance> blockData = generator.CreateMeshData(mapData.noiseMap);
-        
-            var blockDataLists = generator.SeparateMeshData(blockData);
-        
-            generator.CreateMesh(blockDataLists, chunkObject.transform);
-        }
-    }
     
     // Called by Endless Terrain when it needs a new chunk
     public TerrainChunk(Vector2 coord, int size, MapGenerator generator, Transform mapParent)
@@ -42,16 +20,8 @@ public class TerrainChunk
         chunkObject.transform.position = positionV3;
         // SetVisible(false);
         
-        GenerateJob job = new GenerateJob()
-        {
-            position = position,
-            generator = generator,
-            chunkObject = chunkObject,
-        };
-        
-        job.Execute();
         // Ask generator to get MapData with RequestMapData & start generating mesh with OnMapDataReceive
-        // generator.RequestMapData(OnMapDataReceive, position);
+        generator.RequestMapData(OnMapDataReceive, position);
     }
 
     void OnMapDataReceive(MapData mapData)
