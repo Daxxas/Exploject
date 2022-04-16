@@ -46,6 +46,7 @@ public class MapGenerator : MonoBehaviour
     private void Awake()
     {
         PlainNoise.SetupNoise(seed);
+        TestNoise3D.SetupNoise(seed);
     }
 
     private void Update()
@@ -133,7 +134,7 @@ public class MapGenerator : MonoBehaviour
                     
                     // Cube currently tested, in array so it's easier to follow
                     cubePoint[] cubeGrid = new cubePoint[8];
-
+                    #region cubeGridDefinition
                     cubeGrid[0] = new cubePoint()
                     {
                         p = new Vector3(chunkBlockX, y, chunkBlockZ),
@@ -174,6 +175,7 @@ public class MapGenerator : MonoBehaviour
                         p = new Vector3(chunkBlockX, y + 1, chunkBlockZ + 1),
                         val = map[chunkBlockX, y + 1, chunkBlockZ + 1]
                     };
+                    #endregion
                     
                     // From values of the cube corners, find the cube configuration index
                     int cubeindex = 0;
@@ -185,16 +187,10 @@ public class MapGenerator : MonoBehaviour
                     if (cubeGrid[5].val < threshold) cubeindex |= 32;
                     if (cubeGrid[6].val < threshold) cubeindex |= 64;
                     if (cubeGrid[7].val < threshold) cubeindex |= 128;
-                    
-                    // Debug.Log($"cubeindex {cubeindex} for block {chunkBlockX}, {y}, {chunkBlockZ}");
+
                     if (cubeindex == 255 || cubeindex == 0)
                         continue;
-                    
-                    // Debug.Log(cubeindex);
-                                        
-                    // Determine vertices
-                    //List<Vector3> vertlist = new List<Vector3>();
-                    
+
                     /*
                     if (MarchTable.edges[cubeindex] == 0)
                         continue;
@@ -249,7 +245,6 @@ public class MapGenerator : MonoBehaviour
                     }
                     */
 
-                    
                     // From the cube configuration, add triangles & vertices to mesh 
                     List<Vector3> vertices = new List<Vector3>();
                     List<int> triangles = new List<int>();
@@ -266,24 +261,25 @@ public class MapGenerator : MonoBehaviour
                         int b2 = MarchTable.cornerIndexBFromEdge[MarchTable.triangulation[cubeindex,i+2]];
                         
                         // Find vertex position on edge & add them to vertices list
-                        vertices.Add(FindVertexPos(threshold, cubeGrid[a0].p, cubeGrid[b0].p, cubeGrid[a0].val, cubeGrid[b0].val));
-                        // The last vertex we added is the one we want to add to the triangle list
-                        vertices.Add(FindVertexPos(threshold, cubeGrid[a1].p, cubeGrid[b1].p, cubeGrid[a1].val, cubeGrid[b1].val));
-                        vertices.Add(FindVertexPos(threshold, cubeGrid[a2].p, cubeGrid[b2].p, cubeGrid[a2].val, cubeGrid[b2].val));
+                        Vector3 vert1 = FindVertexPos(threshold, cubeGrid[a0].p, cubeGrid[b0].p, cubeGrid[a0].val, cubeGrid[b0].val);
+                        Vector3 vert2 = FindVertexPos(threshold, cubeGrid[a1].p, cubeGrid[b1].p, cubeGrid[a1].val, cubeGrid[b1].val);
+                        Vector3 vert3 = FindVertexPos(threshold, cubeGrid[a2].p, cubeGrid[b2].p, cubeGrid[a2].val, cubeGrid[b2].val);
 
+                        vertices.Add(vert1);
+                        vertices.Add(vert2);
+                        vertices.Add(vert3);
+
+                        // Add new vertices index to triangles array
                         triangles.Add(vertices.Count-1);
                         triangles.Add(vertices.Count-2);
                         triangles.Add(vertices.Count-3);
-                        //triangles.Add(Array.IndexOf(vertlist, vertlist[MarchTable.triangulation[cubeindex,i]]));
-                        //triangles.Add(Array.IndexOf(vertlist, vertlist[MarchTable.triangulation[cubeindex,i+1]]));
-                        //triangles.Add(Array.IndexOf(vertlist, vertlist[MarchTable.triangulation[cubeindex,i+2]]));
                     }
                     
                     Mesh mesh = new Mesh();
                     
                     mesh.SetVertices(vertices.ToArray());
                     mesh.SetTriangles(triangles.ToArray(), 0);
-                    
+
                     CombineInstance ci = new CombineInstance()
                     {
                         mesh = mesh,
@@ -295,12 +291,6 @@ public class MapGenerator : MonoBehaviour
                 }
             }
         }
-        
-        // DestroyImmediate(blockMesh.gameObject);
-
-
-        
-
         
         return blockData;
     }
@@ -372,6 +362,8 @@ public class MapGenerator : MonoBehaviour
             MeshRenderer mr = g.AddComponent<MeshRenderer>();
             mr.sharedMaterial = meshMaterial;
             mf.mesh.CombineMeshes(data.ToArray());
+            
+            mf.mesh.RecalculateNormals();
             
             // foreach (var vertpos in mf.mesh.vertices)  
             // {
