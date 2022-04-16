@@ -520,8 +520,11 @@
         {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }
     };
     
+    // From an edge index, gives matching corners
+    // For edge index 0, arrays would return corners 0 and 1
     
-    static int[] cornerIndexAFromEdge = new int[12] {
+    // From an edge index, gives matching corner A  
+    public static int[] cornerIndexAFromEdge = new int[12] {
         0,
         1,
         2,
@@ -536,7 +539,8 @@
         3
     };
     
-    static int[] cornerIndexBFromEdge = new int[12] {
+    // From an edge index, gives matching corner B
+    public static int[] cornerIndexBFromEdge = new int[12] {
         1,
         2,
         3,

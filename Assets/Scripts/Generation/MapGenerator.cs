@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Unity.Mathematics;
 using UnityEngine;
 
 public class MapGenerator : MonoBehaviour
@@ -117,11 +118,11 @@ public class MapGenerator : MonoBehaviour
     {
         List<CombineInstance> blockData = new List<CombineInstance>();
 
-        // MeshFilter blockMesh = Instantiate(cube, Vector3.zero, Quaternion.identity).GetComponent<MeshFilter>();
+        // GameObject blockMesh = Instantiate(cube, Vector3.zero, Quaternion.identity);
 
         for (int x = 0; x < supportedChunkSize-2; x++)
         {
-            for (int y = 0; y < chunkHeight; y++)
+            for (int y = 0; y < chunkHeight-1; y++)
             {
                 for (int z = 0; z < supportedChunkSize - 2; z++)
                 {
@@ -131,50 +132,50 @@ public class MapGenerator : MonoBehaviour
                     // Marching cube !
                     
                     // Cube currently tested, in array so it's easier to follow
-                    cubePoint[] cubeGrid = new[]
+                    cubePoint[] cubeGrid = new cubePoint[8];
+
+                    cubeGrid[0] = new cubePoint()
                     {
-                        new cubePoint()
-                        {
-                            p = new Vector3(chunkBlockX, y, chunkBlockZ),
-                            val = map[chunkBlockX, y, chunkBlockZ]
-                        }, 
-                        new cubePoint()
-                        {
-                            p = new Vector3(chunkBlockX + 1, y, chunkBlockZ),
-                            val = map[chunkBlockX + 1, y, chunkBlockZ]
-                        }, 
-                        new cubePoint()
-                        {
-                            p = new Vector3(chunkBlockX + 1, y, chunkBlockZ + 1),
-                            val = map[chunkBlockX + 1, y, chunkBlockZ + 1]
-                        }, 
-                        new cubePoint()
-                        {
-                            p = new Vector3(chunkBlockX, y, chunkBlockZ + 1),
-                            val = map[chunkBlockX, y, chunkBlockZ + 1]
-                        }, 
-                        new cubePoint()
-                        {
-                            p = new Vector3(chunkBlockX, y + 1, chunkBlockZ),
-                            val = map[chunkBlockX, y + 1, chunkBlockZ]
-                        }, 
-                        new cubePoint()
-                        {
-                            p = new Vector3(chunkBlockX + 1, y + 1, chunkBlockZ),
-                            val = map[chunkBlockX + 1, y + 1, chunkBlockZ]
-                        }, 
-                        new cubePoint()
-                        {
-                            p = new Vector3(chunkBlockX + 1, y + 1, chunkBlockZ + 1),
-                            val = map[chunkBlockX + 1, y + 1, chunkBlockZ + 1]
-                        }, 
-                        new cubePoint()
-                        {
-                            p = new Vector3(chunkBlockX, y + 1, chunkBlockZ + 1),
-                            val = map[chunkBlockX, y + 1, chunkBlockZ + 1]
-                        }, 
+                        p = new Vector3(chunkBlockX, y, chunkBlockZ),
+                        val = map[chunkBlockX, y, chunkBlockZ]
+                    };
+                    cubeGrid[1] = new cubePoint()
+                    {
+                        p = new Vector3(chunkBlockX + 1, y, chunkBlockZ),
+                        val = map[chunkBlockX + 1, y, chunkBlockZ]
+                    };
+                    cubeGrid[2] = new cubePoint()
+                    {
+                        p = new Vector3(chunkBlockX + 1, y, chunkBlockZ + 1),
+                        val = map[chunkBlockX + 1, y, chunkBlockZ + 1]
+                    };
+                    cubeGrid[3] = new cubePoint()
+                    {
+                        p = new Vector3(chunkBlockX, y, chunkBlockZ + 1),
+                        val = map[chunkBlockX, y, chunkBlockZ + 1]
+                    };
+                    cubeGrid[4] = new cubePoint()
+                    {
+                        p = new Vector3(chunkBlockX, y + 1, chunkBlockZ),
+                        val = map[chunkBlockX, y + 1, chunkBlockZ]
+                    };
+                    cubeGrid[5] = new cubePoint()
+                    {
+                        p = new Vector3(chunkBlockX + 1, y + 1, chunkBlockZ),
+                        val = map[chunkBlockX + 1, y + 1, chunkBlockZ]
+                    };
+                    cubeGrid[6] = new cubePoint()
+                    {
+                        p = new Vector3(chunkBlockX + 1, y + 1, chunkBlockZ + 1),
+                        val = map[chunkBlockX + 1, y + 1, chunkBlockZ + 1]
+                    };
+                    cubeGrid[7] = new cubePoint()
+                    {
+                        p = new Vector3(chunkBlockX, y + 1, chunkBlockZ + 1),
+                        val = map[chunkBlockX, y + 1, chunkBlockZ + 1]
                     };
                     
+                    // From values of the cube corners, find the cube configuration index
                     int cubeindex = 0;
                     if (cubeGrid[0].val < threshold) cubeindex |= 1;
                     if (cubeGrid[1].val < threshold) cubeindex |= 2;
@@ -185,109 +186,122 @@ public class MapGenerator : MonoBehaviour
                     if (cubeGrid[6].val < threshold) cubeindex |= 64;
                     if (cubeGrid[7].val < threshold) cubeindex |= 128;
                     
-                    Debug.Log($"cubeindex {cubeindex} for block {chunkBlockX}, {y}, {chunkBlockZ}");
-
-                    // Determine vertices
-                    Vector3[] vertlist = new Vector3[12];
+                    // Debug.Log($"cubeindex {cubeindex} for block {chunkBlockX}, {y}, {chunkBlockZ}");
+                    if (cubeindex == 255 || cubeindex == 0)
+                        continue;
                     
+                    // Debug.Log(cubeindex);
+                                        
+                    // Determine vertices
+                    //List<Vector3> vertlist = new List<Vector3>();
+                    
+                    /*
                     if (MarchTable.edges[cubeindex] == 0)
                         continue;
-
+                    
                     if ((MarchTable.edges[cubeindex] & 1) == 1)
                     {
-                        vertlist[0] = FindVertexPos(threshold, cubeGrid[0].p,
-                            cubeGrid[1].p, cubeGrid[0].val, cubeGrid[1].val);
+                        vertlist[0] = FindVertexPos(threshold, cubeGrid[0].p, cubeGrid[1].p, cubeGrid[0].val, cubeGrid[1].val);
                     }
-                    if ((MarchTable.edges[cubeindex] & 2) == 1)
+                    if ((MarchTable.edges[cubeindex] & 2) == 2)
                     {
-                        vertlist[1] = FindVertexPos(threshold, cubeGrid[1].p,
-                            cubeGrid[2].p, cubeGrid[1].val, cubeGrid[2].val);
+                        vertlist[1] = FindVertexPos(threshold, cubeGrid[1].p, cubeGrid[2].p, cubeGrid[1].val, cubeGrid[2].val);
                     }
-                    if ((MarchTable.edges[cubeindex] & 4) == 1)
+                    if ((MarchTable.edges[cubeindex] & 4) == 4)
                     {
-                        vertlist[2] = FindVertexPos(threshold, cubeGrid[2].p,
-                            cubeGrid[2].p, cubeGrid[1].val, cubeGrid[3].val);
+                        vertlist[2] = FindVertexPos(threshold, cubeGrid[2].p, cubeGrid[3].p, cubeGrid[2].val, cubeGrid[3].val);
                     }
-                    if ((MarchTable.edges[cubeindex] & 8) == 1)
+                    if ((MarchTable.edges[cubeindex] & 8) == 8)
                     {
-                        vertlist[3] = FindVertexPos(threshold, cubeGrid[3].p,
-                            cubeGrid[0].p, cubeGrid[3].val, cubeGrid[0].val);
+                        vertlist[3] = FindVertexPos(threshold, cubeGrid[3].p, cubeGrid[0].p, cubeGrid[3].val, cubeGrid[0].val);
                     }
-                    if ((MarchTable.edges[cubeindex] & 16) == 1)
+                    if ((MarchTable.edges[cubeindex] & 16) == 16)
                     {
-                        vertlist[4] = FindVertexPos(threshold, cubeGrid[4].p,
-                            cubeGrid[5].p, cubeGrid[4].val, cubeGrid[5].val);
+                        vertlist[4] = FindVertexPos(threshold, cubeGrid[4].p, cubeGrid[5].p, cubeGrid[4].val, cubeGrid[5].val);
                     }
-                    if ((MarchTable.edges[cubeindex] & 32) == 1)
+                    if ((MarchTable.edges[cubeindex] & 32) == 32)
                     {
-                        vertlist[5] = FindVertexPos(threshold, cubeGrid[5].p,
-                            cubeGrid[6].p, cubeGrid[5].val, cubeGrid[6].val);
+                        vertlist[5] = FindVertexPos(threshold, cubeGrid[5].p, cubeGrid[6].p, cubeGrid[5].val, cubeGrid[6].val);
                     }
-                    if ((MarchTable.edges[cubeindex] & 64) == 1)
+                    if ((MarchTable.edges[cubeindex] & 64) == 64)
                     {
-                        vertlist[6] = FindVertexPos(threshold, cubeGrid[6].p,
-                            cubeGrid[7].p, cubeGrid[6].val, cubeGrid[7].val);
+                        vertlist[6] = FindVertexPos(threshold, cubeGrid[6].p, cubeGrid[7].p, cubeGrid[6].val, cubeGrid[7].val);
                     }
-                    if ((MarchTable.edges[cubeindex] & 128) == 1)
+                    if ((MarchTable.edges[cubeindex] & 128) == 128)
                     {
-                        vertlist[7] = FindVertexPos(threshold, cubeGrid[7].p,
-                            cubeGrid[4].p, cubeGrid[7].val, cubeGrid[4].val);
+                        vertlist[7] = FindVertexPos(threshold, cubeGrid[7].p, cubeGrid[4].p, cubeGrid[7].val, cubeGrid[4].val);
                     }
-                    if ((MarchTable.edges[cubeindex] & 256) == 1)
+                    if ((MarchTable.edges[cubeindex] & 256) == 256)
                     {
-                        vertlist[8] = FindVertexPos(threshold, cubeGrid[0].p,
-                            cubeGrid[4].p, cubeGrid[0].val, cubeGrid[4].val);
+                        vertlist[8] = FindVertexPos(threshold, cubeGrid[0].p, cubeGrid[4].p, cubeGrid[0].val, cubeGrid[4].val);
                     }
-                    if ((MarchTable.edges[cubeindex] & 512) == 1)
+                    if ((MarchTable.edges[cubeindex] & 512) == 512)
                     {
-                        vertlist[9] = FindVertexPos(threshold, cubeGrid[1].p,
-                            cubeGrid[5].p, cubeGrid[1].val, cubeGrid[5].val);
+                        vertlist[9] = FindVertexPos(threshold, cubeGrid[1].p, cubeGrid[5].p, cubeGrid[1].val, cubeGrid[5].val);
                     }
-                    if ((MarchTable.edges[cubeindex] & 512) == 1)
+                    if ((MarchTable.edges[cubeindex] & 1024) == 1024)
                     {
-                        vertlist[10] = FindVertexPos(threshold, cubeGrid[2].p,
-                            cubeGrid[6].p, cubeGrid[2].val, cubeGrid[6].val);
+                        vertlist[10] = FindVertexPos(threshold, cubeGrid[2].p, cubeGrid[6].p, cubeGrid[2].val, cubeGrid[6].val);
                     }
-                    if ((MarchTable.edges[cubeindex] & 512) == 1)
+                    if ((MarchTable.edges[cubeindex] & 2048) == 2048)
                     {
-                        vertlist[11] = FindVertexPos(threshold, cubeGrid[3].p,
-                            cubeGrid[7].p, cubeGrid[3].val, cubeGrid[7].val);
+                        vertlist[11] = FindVertexPos(threshold, cubeGrid[3].p, cubeGrid[7].p, cubeGrid[3].val, cubeGrid[7].val);
                     }
+                    */
 
+                    
+                    // From the cube configuration, add triangles & vertices to mesh 
+                    List<Vector3> vertices = new List<Vector3>();
+                    List<int> triangles = new List<int>();
                     for (int i = 0; MarchTable.triangulation[cubeindex,i] != -1; i += 3)
                     {
+                        // Get corners from edges
+                        int a0 = MarchTable.cornerIndexAFromEdge[MarchTable.triangulation[cubeindex,i]];
+                        int b0 = MarchTable.cornerIndexBFromEdge[MarchTable.triangulation[cubeindex,i]];
+
+                        int a1 = MarchTable.cornerIndexAFromEdge[MarchTable.triangulation[cubeindex,i+1]];
+                        int b1 = MarchTable.cornerIndexBFromEdge[MarchTable.triangulation[cubeindex,i+1]];
+
+                        int a2 = MarchTable.cornerIndexAFromEdge[MarchTable.triangulation[cubeindex,i+2]];
+                        int b2 = MarchTable.cornerIndexBFromEdge[MarchTable.triangulation[cubeindex,i+2]];
                         
+                        // Find vertex position on edge & add them to vertices list
+                        vertices.Add(FindVertexPos(threshold, cubeGrid[a0].p, cubeGrid[b0].p, cubeGrid[a0].val, cubeGrid[b0].val));
+                        // The last vertex we added is the one we want to add to the triangle list
+                        vertices.Add(FindVertexPos(threshold, cubeGrid[a1].p, cubeGrid[b1].p, cubeGrid[a1].val, cubeGrid[b1].val));
+                        vertices.Add(FindVertexPos(threshold, cubeGrid[a2].p, cubeGrid[b2].p, cubeGrid[a2].val, cubeGrid[b2].val));
+
+                        triangles.Add(vertices.Count-1);
+                        triangles.Add(vertices.Count-2);
+                        triangles.Add(vertices.Count-3);
+                        //triangles.Add(Array.IndexOf(vertlist, vertlist[MarchTable.triangulation[cubeindex,i]]));
+                        //triangles.Add(Array.IndexOf(vertlist, vertlist[MarchTable.triangulation[cubeindex,i+1]]));
+                        //triangles.Add(Array.IndexOf(vertlist, vertlist[MarchTable.triangulation[cubeindex,i+2]]));
                     }
-
-
-
-                    float noiseBlock = map[chunkBlockX, y, chunkBlockZ];
-
-                    if (noiseBlock > threshold)
+                    
+                    Mesh mesh = new Mesh();
+                    
+                    mesh.SetVertices(vertices.ToArray());
+                    mesh.SetTriangles(triangles.ToArray(), 0);
+                    
+                    CombineInstance ci = new CombineInstance()
                     {
-                        blockMesh.transform.position = new Vector3(chunkBlockX, y, chunkBlockZ);
-                        // Set mesh vertices
-                        List<Vector3> vertices = new List<Vector3>();
-                        // Center
-                        vertices.Add(new Vector3(chunkBlockX, y, chunkBlockZ));
-                        // Borders
-                        Mesh mesh = new Mesh();
-
-                        mesh.SetVertices(vertices);
-                        CombineInstance ci = new CombineInstance()
-                        {
-                            mesh = blockMesh.mesh,
-                            transform = blockMesh.transform.localToWorldMatrix
-                        };
-                        
-                        blockData.Add(ci);
-                    }
+                        mesh = mesh,
+                        // Transform is important here
+                        transform = Matrix4x4.identity
+                    };
+                    
+                    blockData.Add(ci);
                 }
             }
         }
         
-        DestroyImmediate(blockMesh.gameObject);
+        // DestroyImmediate(blockMesh.gameObject);
 
+
+        
+
+        
         return blockData;
     }
 
@@ -321,6 +335,7 @@ public class MapGenerator : MonoBehaviour
     // Called by TerrainChunk after CreateMeshData
     public List<List<CombineInstance>> SeparateMeshData(List<CombineInstance> blockData)
     {
+        
         List<List<CombineInstance>> blockDataLists = new List<List<CombineInstance>>();
         int vertexCount = 0;
         blockDataLists.Add(new List<CombineInstance>());
@@ -348,6 +363,8 @@ public class MapGenerator : MonoBehaviour
     {
         foreach (List<CombineInstance> data in blockDataLists)
         {
+            
+            
             GameObject g = new GameObject($"Chunk Part {blockDataLists.IndexOf(data)}");
             g.transform.parent = parent;
             g.transform.localPosition = Vector3.zero;
@@ -355,10 +372,16 @@ public class MapGenerator : MonoBehaviour
             MeshRenderer mr = g.AddComponent<MeshRenderer>();
             mr.sharedMaterial = meshMaterial;
             mf.mesh.CombineMeshes(data.ToArray());
+            
+            // foreach (var vertpos in mf.mesh.vertices)  
+            // {
+            //     Debug.Log($"{vertpos}");
+            //     Instantiate(cube, vertpos, Quaternion.identity);
+            // }
 
             meshes.Add(mf.mesh);
 
-            g.AddComponent<MeshCollider>();
+            // g.AddComponent<MeshCollider>();
         }
     }
 
