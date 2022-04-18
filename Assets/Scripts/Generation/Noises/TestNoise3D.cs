@@ -5,11 +5,13 @@
 
     public TestNoise3D(int seed)
     {
-        noise = new FastNoiseLite();
-        noise.SetFractalType(FastNoiseLite.FractalType.FBm);
-        noise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
-        noise.SetFrequency(0.0075f);
-        noise.SetFractalOctaves(4);
+        noise = new FastNoiseLite(seed)
+        {
+            mNoiseType = FastNoiseLite.NoiseType.OpenSimplex2,
+            mTransformType3D = FastNoiseLite.TransformType3D.DefaultOpenSimplex2,
+            mFractalType = FastNoiseLite.FractalType.FBm,
+            mOctaves = 4
+        };
     }
 
     public float GetNoise(float x, float y, float z)

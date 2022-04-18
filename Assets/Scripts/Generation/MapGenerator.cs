@@ -40,11 +40,6 @@ public class MapGenerator : MonoBehaviour
 
     private VanillaFunction vanillaFunction;
 
-    private void Start()
-    {
-        vanillaFunction = new VanillaFunction(seed);
-    }
-
     public struct CubePoint
     {
         public Pos3 p;
@@ -100,7 +95,7 @@ public class MapGenerator : MonoBehaviour
     //Temp
     private void Awake()
     {
-        PlainNoise.SetupNoise(seed);
+        vanillaFunction = new VanillaFunction(seed);
     }
 
     private void Update()
@@ -120,7 +115,7 @@ public class MapGenerator : MonoBehaviour
     
 
     [BurstCompile(CompileSynchronously = true)]
-    public struct MapDataJob : IJob
+    public struct MapDataJob : IJobParallelFor
     {
         public int supportedChunkSize;
         public int chunkHeight;
@@ -131,18 +126,13 @@ public class MapGenerator : MonoBehaviour
 
         public VanillaFunction VanillaFunction;
         
-        public void Execute()
+        public void Execute(int idx)
         {
-            for (int x = 0; x < supportedChunkSize; x++)
-            {
-                for (int y = 0; y < chunkHeight; y++)
-                { 
-                    for (int z = 0; z < supportedChunkSize; z++)
-                    {
-                        generatedMap[to1D(x,y,z)] = VanillaFunction.GetResult(x + offsetx, y, z + offsetz);
-                    }
-                }
-            }
+            int x = idx % supportedChunkSize;
+            int y = (idx / supportedChunkSize) % chunkHeight;
+            int z = idx / (supportedChunkSize * chunkHeight);
+            
+            generatedMap[to1D(x,y,z)] = VanillaFunction.GetResult(x + offsetx, y, z + offsetz);
         }
     }
 
@@ -524,6 +514,8 @@ public class MapGenerator : MonoBehaviour
         NativeArray<int> triangulation1D = new NativeArray<int>(4096, Allocator.TempJob);
         triangulation1D.CopyFrom(MarchTable.triangulation1D);
         
+        
+        
         // Ask generator to get MapData with RequestMapData & start generating mesh with OnMapDataReceive
         var mapDataJob = new MapDataJob()
         {
@@ -531,10 +523,11 @@ public class MapGenerator : MonoBehaviour
             offsetz = position.y,
             chunkHeight = chunkHeight,
             supportedChunkSize = supportedChunkSize,
-            generatedMap = generatedMap
+            generatedMap = generatedMap,
+            VanillaFunction = vanillaFunction
         };
         
-        JobHandle mapDataHandle = mapDataJob.Schedule();
+        JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 1);
         
         var marchJob = new MarchCubeJob()
         {

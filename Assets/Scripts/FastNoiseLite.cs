@@ -112,7 +112,7 @@ public struct FastNoiseLite
         BasicGrid 
     };
 
-    private enum TransformType3D 
+    public enum TransformType3D 
     {
         None, 
         ImproveXYPlanes, 
@@ -120,32 +120,53 @@ public struct FastNoiseLite
         DefaultOpenSimplex2 
     };
 
-    private int mSeed;
-    private float mFrequency;
-    private NoiseType mNoiseType;
-    private RotationType3D mRotationType3D;
-    private TransformType3D mTransformType3D;
+    public int mSeed;
+    public float mFrequency;
+    public NoiseType mNoiseType;
+    public RotationType3D mRotationType3D;
+    public TransformType3D mTransformType3D;
 
-    private FractalType mFractalType;
-    private int mOctaves;
-    private float mLacunarity;
-    private float mGain;
-    private float mWeightedStrength;
-    private float mPingPongStength;
+    public FractalType mFractalType;
+    public int mOctaves;
+    public float mLacunarity;
+    public float mGain;
+    public float mWeightedStrength;
+    public float mPingPongStength;
 
-    private float mFractalBounding;
+    public float mFractalBounding;
 
-    private CellularDistanceFunction mCellularDistanceFunction;
-    private CellularReturnType mCellularReturnType;
-    private float mCellularJitterModifier;
+    public CellularDistanceFunction mCellularDistanceFunction;
+    public CellularReturnType mCellularReturnType;
+    public float mCellularJitterModifier;
 
-    private DomainWarpType mDomainWarpType;
-    private TransformType3D mWarpTransformType3D;
-    private float mDomainWarpAmp;
+    public DomainWarpType mDomainWarpType;
+    public TransformType3D mWarpTransformType3D;
+    public float mDomainWarpAmp;
 
     /// <summary>
     /// Create new FastNoise object with optional seed
     /// </summary>
+    public FastNoiseLite(int seed)
+    {
+        mSeed = seed;
+        mFrequency = 0.01f;
+        mNoiseType = NoiseType.OpenSimplex2;
+        mRotationType3D = RotationType3D.None;
+        mTransformType3D = TransformType3D.DefaultOpenSimplex2;
+        mFractalType = FractalType.None;
+        mOctaves = 3;
+        mLacunarity = 2.0f;
+        mGain = 0.5f;
+        mWeightedStrength = 0.0f;
+        mPingPongStength = 2.0f;
+        mFractalBounding = 1 / 1.75f;
+        mCellularDistanceFunction = CellularDistanceFunction.EuclideanSq;
+        mCellularReturnType = CellularReturnType.Distance;
+        mCellularJitterModifier = 1.0f;
+        mDomainWarpType = DomainWarpType.OpenSimplex2;
+        mWarpTransformType3D = TransformType3D.DefaultOpenSimplex2;
+        mDomainWarpAmp = 1.0f;
+    }
     
     /// <summary>
     /// Sets seed used for all noise types

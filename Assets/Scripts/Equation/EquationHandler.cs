@@ -26,7 +26,6 @@ public class EquationHandler
         
         Debug.Log(equation);
         
-        ExpressionOwner.SetupNoise(seed);
         
         context = new ExpressionContext();
         context.ParserOptions.FunctionArgumentSeparator = ',';
@@ -34,7 +33,6 @@ public class EquationHandler
         
         context.ParserOptions.RecreateParser();
 
-        context.Imports.AddType(typeof(ExpressionOwner));
         context.Imports.AddType(typeof(Math));
 
         context.Variables["x"] = (double) 0;
