@@ -1,13 +1,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
+using System.ComponentModel;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
-using static Unity.Mathematics.math;
-using float3 = Unity.Mathematics.float3;
 
 
 public class MapGenerator : MonoBehaviour
@@ -32,14 +30,11 @@ public class MapGenerator : MonoBehaviour
 
     private const float threshold = 0;
     
-    private List<Mesh> meshes = new List<Mesh>();
- 
-    [SerializeField] private Gradient gradient;
-    
-    private Queue<MapThreadInfo<MapData>> mapDataThreadInfoQueue = new Queue<MapThreadInfo<MapData>>();
 
     private VanillaFunction vanillaFunction;
-
+    NativeArray<int> cornerIndexAFromEdge;
+    NativeArray<int> cornerIndexBFromEdge;
+    NativeArray<int> triangulation1D;
     public struct CubePoint
     {
         public Pos3 p;
@@ -92,27 +87,25 @@ public class MapGenerator : MonoBehaviour
         }
     }
     
-    //Temp
     private void Awake()
     {
         vanillaFunction = new VanillaFunction(seed);
+        
+        cornerIndexAFromEdge = new NativeArray<int>(12, Allocator.Persistent);
+        cornerIndexAFromEdge.CopyFrom(MarchTable.cornerIndexAFromEdge);
+        cornerIndexBFromEdge = new NativeArray<int>(12, Allocator.Persistent);
+        cornerIndexBFromEdge.CopyFrom(MarchTable.cornerIndexBFromEdge);
+        triangulation1D = new NativeArray<int>(4096, Allocator.Persistent);
+        triangulation1D.CopyFrom(MarchTable.triangulation1D);
     }
 
-    private void Update()
+    private void OnDisable()
     {
-        if (mapDataThreadInfoQueue.Count > 0)
-        {
-            for (int i = 0; i < mapDataThreadInfoQueue.Count; i++)
-            {
-                lock (mapDataThreadInfoQueue)
-                {
-                    MapThreadInfo<MapData> threadInfo = mapDataThreadInfoQueue.Dequeue();
-                    threadInfo.callback(threadInfo.parameter);
-                }
-            }
-        }
+        cornerIndexAFromEdge.Dispose();
+        cornerIndexBFromEdge.Dispose();
+        triangulation1D.Dispose();
     }
-    
+
 
     [BurstCompile(CompileSynchronously = true)]
     public struct MapDataJob : IJobParallelFor
@@ -132,20 +125,20 @@ public class MapGenerator : MonoBehaviour
             int y = (idx / supportedChunkSize) % chunkHeight;
             int z = idx / (supportedChunkSize * chunkHeight);
             
-            generatedMap[to1D(x,y,z)] = VanillaFunction.GetResult(x + offsetx, y, z + offsetz);
+            generatedMap[idx] = VanillaFunction.GetResult(x + offsetx, y, z + offsetz);
         }
     }
 
     [BurstCompile(CompileSynchronously = true)]
     public struct MarchCubeJob : IJobParallelFor
     {
-        [ReadOnly]
+        [Unity.Collections.ReadOnly]
         public NativeArray<float> map;
-        [ReadOnly]
+        [Unity.Collections.ReadOnly]
         public NativeArray<int> triangulation;
-        [ReadOnly]
+        [Unity.Collections.ReadOnly]
         public NativeArray<int> cornerIndexAFromEdge;
-        [ReadOnly]
+        [Unity.Collections.ReadOnly]
         public NativeArray<int> cornerIndexBFromEdge;
         [WriteOnly]
         public NativeQueue<Triangle>.ParallelWriter triangles;
@@ -264,217 +257,6 @@ public class MapGenerator : MonoBehaviour
     //     }
     // }
     
-    
-    //  
-    // // Called in thread from RequestMapData 
-    // private MapData GenerateMapData(Vector2 offset)
-    // {
-    //     float[,,] finalMap = new float[supportedChunkSize, chunkHeight, supportedChunkSize];
-    //     for (int x = 0; x < supportedChunkSize; x++)
-    //     {
-    //         for (int z = 0; z < supportedChunkSize; z++)
-    //         {
-    //             for (int y = 0; y < chunkHeight; y++)
-    //             {
-    //                 try
-    //                 {
-    //                     finalMap[x, y, z] = VanillaFunction.GetResult(x + offset.x, y, z + offset.y);
-    //                 }
-    //                 catch (Exception e)
-    //                 {
-    //                     Debug.LogError(e);
-    //                     Debug.LogError($"x: {x}, y: {y}, z: {z}");
-    //                 }
-    //             }
-    //         }
-    //     }
-    //
-    //     return new MapData(finalMap);
-    // }
-    //
-    // #region Mesh Handling
-    //
-    // // Called when TerrainChunk receives MapData with OnMapDataReceive
-    // public List<CombineInstance> CreateMeshData(float[,,] map)
-    // {
-    //     List<CombineInstance> blockData = new List<CombineInstance>();
-    //
-    //     // GameObject blockMesh = Instantiate(cube, Vector3.zero, Quaternion.identity);
-    //
-    //     for (int x = 0; x < supportedChunkSize-2; x++)
-    //     {
-    //         for (int y = 0; y < chunkHeight-1; y++)
-    //         {
-    //             for (int z = 0; z < supportedChunkSize - 2; z++)
-    //             {
-    //                 int chunkBlockX = x + 1;
-    //                 int chunkBlockZ = z + 1;
-    //
-    //                 // Marching cube !
-    //                 
-    //                 // Cube currently tested, in array so it's easier to follow
-    //                 CubePoint[] cubeGrid = new CubePoint[8];
-    //                 #region cubeGridDefinition
-    //                 cubeGrid[0] = new CubePoint()
-    //                 {
-    //                     p = new Vector3(chunkBlockX, y, chunkBlockZ),
-    //                     val = map[chunkBlockX, y, chunkBlockZ]
-    //                 };
-    //                 cubeGrid[1] = new CubePoint()
-    //                 {
-    //                     p = new Vector3(chunkBlockX + 1, y, chunkBlockZ),
-    //                     val = map[chunkBlockX + 1, y, chunkBlockZ]
-    //                 };
-    //                 cubeGrid[2] = new CubePoint()
-    //                 {
-    //                     p = new Vector3(chunkBlockX + 1, y, chunkBlockZ + 1),
-    //                     val = map[chunkBlockX + 1, y, chunkBlockZ + 1]
-    //                 };
-    //                 cubeGrid[3] = new CubePoint()
-    //                 {
-    //                     p = new Vector3(chunkBlockX, y, chunkBlockZ + 1),
-    //                     val = map[chunkBlockX, y, chunkBlockZ + 1]
-    //                 };
-    //                 cubeGrid[4] = new CubePoint()
-    //                 {
-    //                     p = new Vector3(chunkBlockX, y + 1, chunkBlockZ),
-    //                     val = map[chunkBlockX, y + 1, chunkBlockZ]
-    //                 };
-    //                 cubeGrid[5] = new CubePoint()
-    //                 {
-    //                     p = new Vector3(chunkBlockX + 1, y + 1, chunkBlockZ),
-    //                     val = map[chunkBlockX + 1, y + 1, chunkBlockZ]
-    //                 };
-    //                 cubeGrid[6] = new CubePoint()
-    //                 {
-    //                     p = new Vector3(chunkBlockX + 1, y + 1, chunkBlockZ + 1),
-    //                     val = map[chunkBlockX + 1, y + 1, chunkBlockZ + 1]
-    //                 };
-    //                 cubeGrid[7] = new CubePoint()
-    //                 {
-    //                     p = new Vector3(chunkBlockX, y + 1, chunkBlockZ + 1),
-    //                     val = map[chunkBlockX, y + 1, chunkBlockZ + 1]
-    //                 };
-    //                 #endregion
-    //                 
-    //                 // From values of the cube corners, find the cube configuration index
-    //                 int cubeindex = 0;
-    //                 if (cubeGrid[0].val < threshold) cubeindex |= 1;
-    //                 if (cubeGrid[1].val < threshold) cubeindex |= 2;
-    //                 if (cubeGrid[2].val < threshold) cubeindex |= 4;
-    //                 if (cubeGrid[3].val < threshold) cubeindex |= 8;
-    //                 if (cubeGrid[4].val < threshold) cubeindex |= 16;
-    //                 if (cubeGrid[5].val < threshold) cubeindex |= 32;
-    //                 if (cubeGrid[6].val < threshold) cubeindex |= 64;
-    //                 if (cubeGrid[7].val < threshold) cubeindex |= 128;
-    //
-    //                 if (cubeindex == 255 || cubeindex == 0)
-    //                     continue;
-    //
-    //                 /*
-    //                 if (MarchTable.edges[cubeindex] == 0)
-    //                     continue;
-    //                 
-    //                 if ((MarchTable.edges[cubeindex] & 1) == 1)
-    //                 {
-    //                     vertlist[0] = FindVertexPos(threshold, cubeGrid[0].p, cubeGrid[1].p, cubeGrid[0].val, cubeGrid[1].val);
-    //                 }
-    //                 if ((MarchTable.edges[cubeindex] & 2) == 2)
-    //                 {
-    //                     vertlist[1] = FindVertexPos(threshold, cubeGrid[1].p, cubeGrid[2].p, cubeGrid[1].val, cubeGrid[2].val);
-    //                 }
-    //                 if ((MarchTable.edges[cubeindex] & 4) == 4)
-    //                 {
-    //                     vertlist[2] = FindVertexPos(threshold, cubeGrid[2].p, cubeGrid[3].p, cubeGrid[2].val, cubeGrid[3].val);
-    //                 }
-    //                 if ((MarchTable.edges[cubeindex] & 8) == 8)
-    //                 {
-    //                     vertlist[3] = FindVertexPos(threshold, cubeGrid[3].p, cubeGrid[0].p, cubeGrid[3].val, cubeGrid[0].val);
-    //                 }
-    //                 if ((MarchTable.edges[cubeindex] & 16) == 16)
-    //                 {
-    //                     vertlist[4] = FindVertexPos(threshold, cubeGrid[4].p, cubeGrid[5].p, cubeGrid[4].val, cubeGrid[5].val);
-    //                 }
-    //                 if ((MarchTable.edges[cubeindex] & 32) == 32)
-    //                 {
-    //                     vertlist[5] = FindVertexPos(threshold, cubeGrid[5].p, cubeGrid[6].p, cubeGrid[5].val, cubeGrid[6].val);
-    //                 }
-    //                 if ((MarchTable.edges[cubeindex] & 64) == 64)
-    //                 {
-    //                     vertlist[6] = FindVertexPos(threshold, cubeGrid[6].p, cubeGrid[7].p, cubeGrid[6].val, cubeGrid[7].val);
-    //                 }
-    //                 if ((MarchTable.edges[cubeindex] & 128) == 128)
-    //                 {
-    //                     vertlist[7] = FindVertexPos(threshold, cubeGrid[7].p, cubeGrid[4].p, cubeGrid[7].val, cubeGrid[4].val);
-    //                 }
-    //                 if ((MarchTable.edges[cubeindex] & 256) == 256)
-    //                 {
-    //                     vertlist[8] = FindVertexPos(threshold, cubeGrid[0].p, cubeGrid[4].p, cubeGrid[0].val, cubeGrid[4].val);
-    //                 }
-    //                 if ((MarchTable.edges[cubeindex] & 512) == 512)
-    //                 {
-    //                     vertlist[9] = FindVertexPos(threshold, cubeGrid[1].p, cubeGrid[5].p, cubeGrid[1].val, cubeGrid[5].val);
-    //                 }
-    //                 if ((MarchTable.edges[cubeindex] & 1024) == 1024)
-    //                 {
-    //                     vertlist[10] = FindVertexPos(threshold, cubeGrid[2].p, cubeGrid[6].p, cubeGrid[2].val, cubeGrid[6].val);
-    //                 }
-    //                 if ((MarchTable.edges[cubeindex] & 2048) == 2048)
-    //                 {
-    //                     vertlist[11] = FindVertexPos(threshold, cubeGrid[3].p, cubeGrid[7].p, cubeGrid[3].val, cubeGrid[7].val);
-    //                 }
-    //                 */
-    //
-    //                 // From the cube configuration, add triangles & vertices to mesh 
-    //                 List<Vector3> vertices = new List<Vector3>();
-    //                 List<int> triangles = new List<int>();
-    //                 for (int i = 0; MarchTable.triangulation[cubeindex,i] != -1; i += 3)
-    //                 {
-    //                     // Get corners from edges
-    //                     int a0 = MarchTable.cornerIndexAFromEdge[MarchTable.triangulation[cubeindex,i]];
-    //                     int b0 = MarchTable.cornerIndexBFromEdge[MarchTable.triangulation[cubeindex,i]];
-    //
-    //                     int a1 = MarchTable.cornerIndexAFromEdge[MarchTable.triangulation[cubeindex,i+1]];
-    //                     int b1 = MarchTable.cornerIndexBFromEdge[MarchTable.triangulation[cubeindex,i+1]];
-    //
-    //                     int a2 = MarchTable.cornerIndexAFromEdge[MarchTable.triangulation[cubeindex,i+2]];
-    //                     int b2 = MarchTable.cornerIndexBFromEdge[MarchTable.triangulation[cubeindex,i+2]];
-    //                     
-    //                     // Find vertex position on edge & add them to vertices list
-    //                     Vector3 vert1 = FindVertexPos(threshold, cubeGrid[a0].p, cubeGrid[b0].p, cubeGrid[a0].val, cubeGrid[b0].val);
-    //                     Vector3 vert2 = FindVertexPos(threshold, cubeGrid[a1].p, cubeGrid[b1].p, cubeGrid[a1].val, cubeGrid[b1].val);
-    //                     Vector3 vert3 = FindVertexPos(threshold, cubeGrid[a2].p, cubeGrid[b2].p, cubeGrid[a2].val, cubeGrid[b2].val);
-    //
-    //                     vertices.Add(vert1);
-    //                     vertices.Add(vert2);
-    //                     vertices.Add(vert3);
-    //
-    //                     // Add new vertices index to triangles array
-    //                     triangles.Add(vertices.Count-1);
-    //                     triangles.Add(vertices.Count-2);
-    //                     triangles.Add(vertices.Count-3);
-    //                 }
-    //                 
-    //                 Mesh mesh = new Mesh();
-    //                 
-    //                 mesh.SetVertices(vertices.ToArray());
-    //                 mesh.SetTriangles(triangles.ToArray(), 0);
-    //
-    //                 CombineInstance ci = new CombineInstance()
-    //                 {
-    //                     mesh = mesh,
-    //                     // Transform is important here
-    //                     transform = Matrix4x4.identity
-    //                 };
-    //                 
-    //                 blockData.Add(ci);
-    //             }
-    //         }
-    //     }
-    //     
-    //     return blockData;
-    // }
-
     private static Pos3 FindVertexPos(float threshold, Pos3 p1, Pos3 p2, float v1val, float v2val)
     {
         Pos3 position = new Pos3(0,0,0);
@@ -504,18 +286,9 @@ public class MapGenerator : MonoBehaviour
 
     public void CreateChunk(Vector2 position, GameObject chunkObject)
     {
-        NativeArray<float> generatedMap = new NativeArray<float>(chunkHeight * supportedChunkSize * supportedChunkSize, Allocator.TempJob);
+        NativeArray<float> generatedMap = new NativeArray<float>(chunkHeight * supportedChunkSize * supportedChunkSize, Allocator.TempJob,NativeArrayOptions.UninitializedMemory);
         NativeQueue<Triangle> triangles = new NativeQueue<Triangle>(Allocator.TempJob);
 
-        NativeArray<int> cornerIndexAFromEdge = new NativeArray<int>(12, Allocator.TempJob);
-        cornerIndexAFromEdge.CopyFrom(MarchTable.cornerIndexAFromEdge);
-        NativeArray<int> cornerIndexBFromEdge = new NativeArray<int>(12, Allocator.TempJob);
-        cornerIndexBFromEdge.CopyFrom(MarchTable.cornerIndexBFromEdge);
-        NativeArray<int> triangulation1D = new NativeArray<int>(4096, Allocator.TempJob);
-        triangulation1D.CopyFrom(MarchTable.triangulation1D);
-        
-        
-        
         // Ask generator to get MapData with RequestMapData & start generating mesh with OnMapDataReceive
         var mapDataJob = new MapDataJob()
         {
@@ -527,7 +300,7 @@ public class MapGenerator : MonoBehaviour
             VanillaFunction = vanillaFunction
         };
         
-        JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 1);
+        JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 5);
         
         var marchJob = new MarchCubeJob()
         {
@@ -543,9 +316,6 @@ public class MapGenerator : MonoBehaviour
         marchHandle.Complete();
 
         StartCoroutine(CreateChunkMesh(triangles, marchHandle, generatedMap, chunkObject));
-        cornerIndexAFromEdge.Dispose();
-        cornerIndexBFromEdge.Dispose();
-        triangulation1D.Dispose();
     }
 
     private IEnumerator CreateChunkMesh(NativeQueue<Triangle> triangles, JobHandle job, NativeArray<float> generatedMap, GameObject chunkObject)
@@ -577,7 +347,6 @@ public class MapGenerator : MonoBehaviour
         mesh.SetTriangles(tris, 0);
         mesh.RecalculateNormals();
 
-        IsMeshOk(mesh);
         mf.mesh = mesh;
         mr.material = meshMaterial;
         triangles.Dispose();
@@ -585,93 +354,9 @@ public class MapGenerator : MonoBehaviour
 
     }
 
-    public static bool IsMeshOk(Mesh m)
-    {
-        foreach (Vector3 v in m.vertices)
-        {
-            if (!float.IsFinite(v.x) || !float.IsFinite(v.y) || !float.IsFinite(v.z))
-            {
-                Debug.Log($"{v}");
-                return false;
-            }
-        }
-        return true;
-    }
-
-    // Called by TerrainChunk after CreateMeshData
-    // public List<List<CombineInstance>> SeparateMeshData(List<CombineInstance> blockData)
-    // {
-    //     
-    //     List<List<CombineInstance>> blockDataLists = new List<List<CombineInstance>>();
-    //     int vertexCount = 0;
-    //     blockDataLists.Add(new List<CombineInstance>());
-    //
-    //     for (int i = 0; i < blockData.Count; i++)
-    //     {
-    //         vertexCount += blockData[i].mesh.vertexCount;
-    //         if (vertexCount > 65536)
-    //         {
-    //             vertexCount = 0;
-    //             blockDataLists.Add(new List<CombineInstance>());
-    //             i--;
-    //         }
-    //         else
-    //         {
-    //             blockDataLists.Last().Add(blockData[i]);
-    //         }
-    //     }
-    //
-    //     return blockDataLists;
-    // }
-
-    // Called by TerrainChunk after SeparateMeshData
-    public void CreateMesh(Mesh mesh, GameObject g, Transform parent) 
-    {
-        g.transform.parent = parent;
-        g.transform.localPosition = Vector3.zero;
-        MeshFilter mf = g.AddComponent<MeshFilter>();
-        MeshRenderer mr = g.AddComponent<MeshRenderer>();
-        mr.sharedMaterial = meshMaterial;
-        mf.mesh = mesh;
-            
-        mf.mesh.RecalculateNormals();
-            
-        // foreach (var vertpos in mf.mesh.vertices)  
-        // {
-        //     Debug.Log($"{vertpos}");
-        //     Instantiate(cube, vertpos, Quaternion.identity);
-        // }
-    
-        meshes.Add(mf.mesh);
-    }
-
-    // #endregion
-
-
     public static int to1D( int x, int y, int z)
     {
         return x + y*supportedChunkSize + z*supportedChunkSize*chunkHeight;
     }
-
-    struct MapThreadInfo<T>
-    {
-        public readonly Action<T> callback;
-        public readonly T parameter;
-
-        public MapThreadInfo(Action<T> callback, T parameter)
-        {
-            this.callback = callback;
-            this.parameter = parameter;
-        }
-    }
 }
 
-public struct MapData
-{
-    public float[,,] noiseMap;
-
-    public MapData(float[,,] noiseMap)
-    {
-        this.noiseMap = noiseMap;
-    }
-}
