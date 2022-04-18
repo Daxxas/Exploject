@@ -17,9 +17,9 @@ public class EndlessTerrain : MonoBehaviour
     private List<TerrainChunk> terrainChunksVisibleLastUpdate = new List<TerrainChunk>();
     private void Start()
     {
-        chunkSize = generator.chunkSize; 
+        chunkSize = MapGenerator.chunkSize; 
         chunksVisibleInViewDst = Mathf.RoundToInt(maxViewDst / chunkSize);
-        Debug.Log($"chunksVisibleInViewDst: {chunksVisibleInViewDst}");
+        // Debug.Log($"chunksVisibleInViewDst: {chunksVisibleInViewDst}");
     }
 
     private void Update()

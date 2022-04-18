@@ -16,7 +16,7 @@ public class FiniteTerrain : MonoBehaviour
         for (int x = 0; x < previewSize; x++)
         {
             new FiniteTerrainChunk(new Vector2(x, 0), new Vector2(0, increment), new Vector2(x, previewSize-1),
-                generator.chunkSize, generator, mapParent);
+                MapGenerator.chunkSize, generator, mapParent);
         }
     }
 
@@ -56,21 +56,21 @@ public class FiniteTerrain : MonoBehaviour
             chunkObject.transform.parent = mapParent;
             chunkObject.transform.position = positionV3;
             
-            generator.RequestMapData(OnMapDataReceive, position);
+            // generator.RequestMapData(OnMapDataReceive, position);
         }
 
-        void OnMapDataReceive(MapData mapData)
-        {
-            List<CombineInstance> blockData = generator.CreateMeshData(mapData.noiseMap);
-        
-            var blockDataLists = generator.SeparateMeshData(blockData);
-        
-            generator.CreateMesh(blockDataLists, chunkObject.transform);
-
-            if (!chunkCoord.Equals(maxCoord))
-            {
-                new FiniteTerrainChunk(chunkCoord + increment, increment, maxCoord, generator.chunkSize, generator, mapParent);
-            }
-        }
+        // void OnMapDataReceive(MapData mapData)
+        // {
+        //     List<CombineInstance> blockData = generator.CreateMeshData(mapData.noiseMap);
+        //
+        //     var blockDataLists = generator.SeparateMeshData(blockData);
+        //
+        //     generator.CreateMesh(blockDataLists, chunkObject.transform);
+        //
+        //     if (!chunkCoord.Equals(maxCoord))
+        //     {
+        //         new FiniteTerrainChunk(chunkCoord + increment, increment, maxCoord, generator.chunkSize, generator, mapParent);
+        //     }
+        // }
     }
 }

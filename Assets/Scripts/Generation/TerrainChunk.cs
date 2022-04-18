@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Jobs;
 using UnityEngine;
 
 public class TerrainChunk
@@ -19,19 +21,19 @@ public class TerrainChunk
         chunkObject.transform.parent = mapParent;
         chunkObject.transform.position = positionV3;
         // SetVisible(false);
+
         
-        // Ask generator to get MapData with RequestMapData & start generating mesh with OnMapDataReceive
-        generator.RequestMapData(OnMapDataReceive, position);
+        this.generator.CreateChunk(position, chunkObject);
     }
 
-    void OnMapDataReceive(MapData mapData)
-    {
-        List<CombineInstance> blockData = generator.CreateMeshData(mapData.noiseMap);
-        
-        var blockDataLists = generator.SeparateMeshData(blockData);
-        
-        generator.CreateMesh(blockDataLists, chunkObject.transform);
-    }
+    // void OnMapDataReceive(MapData mapData)
+    // {
+    //     List<CombineInstance> blockData = generator.CreateMeshData(mapData.noiseMap);
+    //     
+    //     var blockDataLists = generator.SeparateMeshData(blockData);
+    //     
+    //     generator.CreateMesh(blockDataLists, chunkObject.transform);
+    // }
 
     public void UpdateChunk()
     {
