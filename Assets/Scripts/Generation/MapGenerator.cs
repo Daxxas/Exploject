@@ -284,7 +284,7 @@ public class MapGenerator : MonoBehaviour
             VanillaFunction = vanillaFunction
         };
         
-        JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 5);
+        JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 4);
         
         var marchJob = new MarchCubeJob()
         {
@@ -295,7 +295,7 @@ public class MapGenerator : MonoBehaviour
             triangulation = triangulation1D
         };
 
-        var marchHandle = marchJob.Schedule(generatedMap.Length, 5, mapDataHandle);
+        var marchHandle = marchJob.Schedule(generatedMap.Length, 4, mapDataHandle);
         // marchHandle.Complete();
 
         StartCoroutine(CreateChunkMesh(triangles, marchHandle, generatedMap, chunkObject));
@@ -334,7 +334,9 @@ public class MapGenerator : MonoBehaviour
         mf.mesh = mesh;
         mr.material = meshMaterial;
         triangles.Dispose();
-        generatedMap.Dispose();
+        generatedMap.Dispose();        
+        chunkObject.AddComponent<MeshCollider>();
+
 
     }
 

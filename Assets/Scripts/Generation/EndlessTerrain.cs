@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Unity.Jobs;
 using UnityEngine;
 
 public class EndlessTerrain : MonoBehaviour
@@ -26,6 +27,7 @@ public class EndlessTerrain : MonoBehaviour
     {
         viewerPosition = new Vector2(viewer.position.x, viewer.position.z);
         UpdateVisibleChunks();
+        JobHandle.ScheduleBatchedJobs();
     }
 
 
