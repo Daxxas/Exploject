@@ -5,6 +5,7 @@ using System.ComponentModel;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
 
 
@@ -37,36 +38,18 @@ public class MapGenerator : MonoBehaviour
     NativeArray<int> triangulation1D;
     public struct CubePoint
     {
-        public Pos3 p;
+        public float3 p;
         public float val;
     }
-
-    public struct Pos3
-    {
-        public float x;
-        public float y;
-        public float z;
-
-        public Pos3(float x, float y, float z)
-        {
-            this.x = x;
-            this.y = y;
-            this.z = z;
-        }
-
-        public static implicit operator Vector3(Pos3 pos)
-        {
-            return new Vector3(pos.x, pos.y, pos.z);
-        }
-    }
+    
 
     public struct Triangle
     {
-        public Pos3 a;
-        public Pos3 b;
-        public Pos3 c;
+        public float3 a;
+        public float3 b;
+        public float3 c;
 
-        public Pos3 this [int i] {
+        public float3 this [int i] {
             get {
                 switch (i) {
                     case 0:
@@ -79,7 +62,7 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
-        public Triangle(Pos3 a, Pos3 b, Pos3 c)
+        public Triangle(float3 a, float3 b, float3 c)
         {
             this.a = a;
             this.b = b;
@@ -107,7 +90,7 @@ public class MapGenerator : MonoBehaviour
     }
 
 
-    [BurstCompile(CompileSynchronously = true)]
+    [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
     public struct MapDataJob : IJobParallelFor
     {
         public int supportedChunkSize;
@@ -129,7 +112,7 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    [BurstCompile(CompileSynchronously = true)]
+    [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
     public struct MarchCubeJob : IJobParallelFor
     {
         [Unity.Collections.ReadOnly]
@@ -162,42 +145,42 @@ public class MapGenerator : MonoBehaviour
             #region cubeGridDefinition
             marchCube[0] = new CubePoint()
             {
-                p = new Pos3(x, y, z),
+                p = new float3(x, y, z),
                 val = map[to1D(x, y, z)]
             };
             marchCube[1] = new CubePoint()
             {
-                p = new Pos3(x + 1, y, z),
+                p = new float3(x + 1, y, z),
                 val = map[to1D(x + 1, y, z)]
             };
             marchCube[2] = new CubePoint()
             {
-                p = new Pos3(x + 1, y, z + 1),
+                p = new float3(x + 1, y, z + 1),
                 val = map[to1D(x + 1, y, z + 1)]
             };
             marchCube[3] = new CubePoint()
             {
-                p = new Pos3(x, y, z + 1),
+                p = new float3(x, y, z + 1),
                 val = map[to1D(x, y, z + 1)]
             };
             marchCube[4] = new CubePoint()
             {
-                p = new Pos3(x, y + 1, z),
+                p = new float3(x, y + 1, z),
                 val = map[to1D(x, y + 1, z)]
             };
             marchCube[5] = new CubePoint()
             {
-                p = new Pos3(x + 1, y + 1, z),
+                p = new float3(x + 1, y + 1, z),
                 val = map[to1D(x + 1, y + 1, z)]
             };
             marchCube[6] = new CubePoint()
             {
-                p = new Pos3(x + 1, y + 1, z + 1),
+                p = new float3(x + 1, y + 1, z + 1),
                 val = map[to1D(x + 1, y + 1, z + 1)]
             };
             marchCube[7] = new CubePoint()
             {
-                p = new Pos3(x, y + 1, z + 1),
+                p = new float3(x, y + 1, z + 1),
                 val = map[to1D(x, y + 1, z + 1)]
             };
             #endregion
@@ -230,9 +213,9 @@ public class MapGenerator : MonoBehaviour
                 int b2 = cornerIndexBFromEdge[triangulation[cubeindex * 16 + (i+2)]];
                 
                 // Find vertex position on edge & add them to vertices list
-                Pos3 vert1 = FindVertexPos(threshold, marchCube[a0].p, marchCube[b0].p, marchCube[a0].val, marchCube[b0].val);
-                Pos3 vert2 = FindVertexPos(threshold, marchCube[a1].p, marchCube[b1].p, marchCube[a1].val, marchCube[b1].val);
-                Pos3 vert3 = FindVertexPos(threshold, marchCube[a2].p, marchCube[b2].p, marchCube[a2].val, marchCube[b2].val);
+                float3 vert1 = FindVertexPos(threshold, marchCube[a0].p, marchCube[b0].p, marchCube[a0].val, marchCube[b0].val);
+                float3 vert2 = FindVertexPos(threshold, marchCube[a1].p, marchCube[b1].p, marchCube[a1].val, marchCube[b1].val);
+                float3 vert3 = FindVertexPos(threshold, marchCube[a2].p, marchCube[b2].p, marchCube[a2].val, marchCube[b2].val);
                 
                 // The point of the job is to fill this :
                 triangles.Enqueue(new Triangle(vert1, vert2, vert3));
@@ -257,9 +240,8 @@ public class MapGenerator : MonoBehaviour
     //     }
     // }
     
-    private static Pos3 FindVertexPos(float threshold, Pos3 p1, Pos3 p2, float v1val, float v2val)
+    private static float3 FindVertexPos(float threshold, float3 p1, float3 p2, float v1val, float v2val)
     {
-        Pos3 position = new Pos3(0,0,0);
 
         if(Mathf.Abs(v1val) < 0.0001)
         {
@@ -275,6 +257,7 @@ public class MapGenerator : MonoBehaviour
         {
             return p1;
         }
+        float3 position = new float3(0,0,0);
         
         float mu = (threshold - v1val) / (v2val - v1val);
         position.x = p1.x + mu * (p2.x - p1.x);
@@ -283,11 +266,12 @@ public class MapGenerator : MonoBehaviour
         
         return position;
     }
-
+    
+    
     public void CreateChunk(Vector2 position, GameObject chunkObject)
     {
-        NativeArray<float> generatedMap = new NativeArray<float>(chunkHeight * supportedChunkSize * supportedChunkSize, Allocator.TempJob,NativeArrayOptions.UninitializedMemory);
-        NativeQueue<Triangle> triangles = new NativeQueue<Triangle>(Allocator.TempJob);
+        NativeArray<float> generatedMap = new NativeArray<float>(chunkHeight * supportedChunkSize * supportedChunkSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        NativeQueue<Triangle> triangles = new NativeQueue<Triangle>(Allocator.Persistent);
 
         // Ask generator to get MapData with RequestMapData & start generating mesh with OnMapDataReceive
         var mapDataJob = new MapDataJob()
@@ -312,8 +296,7 @@ public class MapGenerator : MonoBehaviour
         };
 
         var marchHandle = marchJob.Schedule(generatedMap.Length, 5, mapDataHandle);
-        
-        marchHandle.Complete();
+        // marchHandle.Complete();
 
         StartCoroutine(CreateChunkMesh(triangles, marchHandle, generatedMap, chunkObject));
     }
@@ -321,6 +304,7 @@ public class MapGenerator : MonoBehaviour
     private IEnumerator CreateChunkMesh(NativeQueue<Triangle> triangles, JobHandle job, NativeArray<float> generatedMap, GameObject chunkObject)
     {
         yield return new WaitUntil(() => job.IsCompleted);
+        job.Complete();
         
         MeshFilter mf = chunkObject.AddComponent<MeshFilter>();
         MeshRenderer mr = chunkObject.AddComponent<MeshRenderer>();
