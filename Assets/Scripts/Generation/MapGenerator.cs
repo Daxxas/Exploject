@@ -7,6 +7,8 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.XR;
 
 
 public class MapGenerator : MonoBehaviour
@@ -30,7 +32,6 @@ public class MapGenerator : MonoBehaviour
     public const int chunkHeight = 128;
 
     private const float threshold = 0;
-    
 
     private VanillaFunction vanillaFunction;
     NativeArray<int> cornerIndexAFromEdge;
@@ -97,7 +98,6 @@ public class MapGenerator : MonoBehaviour
         public int chunkHeight;
         public float offsetx;
         public float offsetz;
-        [WriteOnly]
         public NativeArray<float> generatedMap;
 
         public VanillaFunction VanillaFunction;
@@ -123,7 +123,6 @@ public class MapGenerator : MonoBehaviour
         public NativeArray<int> cornerIndexAFromEdge;
         [Unity.Collections.ReadOnly]
         public NativeArray<int> cornerIndexBFromEdge;
-        [WriteOnly]
         public NativeQueue<Triangle>.ParallelWriter triangles;
         public VanillaFunction VanillaFunction;
         
@@ -227,17 +226,109 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    // TODO : Generate mesh in job
-    [BurstCompile(CompileSynchronously = true)]
-    public struct ChunkMeshJob : IJobParallelFor
+    [BurstCompile(FloatPrecision.High, FloatMode.Fast,CompileSynchronously = true)]
+    public struct ChunkMeshJob : IJob
     {
-        private NativeList<Triangle> triangles;
-        private Mesh.MeshData meshData;
-    
-        public void Execute(int idx)
+        public NativeQueue<Triangle> triangles;
+        public Mesh.MeshDataArray meshDataArray;
+        public Bounds bounds;
+        
+        public void Execute()
         {
-            NativeArray<float3> positions = meshData.GetVertexData<float3>();
+            int vertexAttributeCount = 2;
+            int vertexCount = triangles.Count * 3;
+            int triangleIndexCount = triangles.Count * 3;
             
+            Mesh.MeshData meshData = meshDataArray[0];
+
+            var vertexAttributes = new NativeArray<VertexAttributeDescriptor>(
+                vertexAttributeCount, Allocator.Temp, NativeArrayOptions.UninitializedMemory
+            );
+            vertexAttributes[0] = new VertexAttributeDescriptor(dimension: 3);
+            vertexAttributes[1] = new VertexAttributeDescriptor(
+                VertexAttribute.Normal, dimension: 3, stream: 1
+            );
+            // vertexAttributes[2] = new VertexAttributeDescriptor(
+            //     VertexAttribute.Tangent, dimension: 4, stream: 2
+            // );
+            // vertexAttributes[3] = new VertexAttributeDescriptor(
+            //     VertexAttribute.TexCoord0, dimension: 2, stream: 3
+            // );
+            
+            
+            meshData.SetVertexBufferParams(vertexCount, vertexAttributes);
+            meshData.SetIndexBufferParams(triangleIndexCount, IndexFormat.UInt32);
+            vertexAttributes.Dispose();
+
+            NativeArray<float3> positions = meshData.GetVertexData<float3>();
+            NativeArray<float3> normals = meshData.GetVertexData<float3>(1);
+            NativeArray<int> triangleIndices = meshData.GetIndexData<int>();
+            
+            int iterationCount = 0;
+            while (triangles.TryDequeue(out Triangle triangle))
+            {
+                positions[iterationCount] = triangle.c;
+                positions[iterationCount + 1] = triangle.b;
+                positions[iterationCount + 2] = triangle.a;
+                
+                
+                triangleIndices[iterationCount+2] = iterationCount+2;
+                triangleIndices[iterationCount+1] = iterationCount+1;
+                triangleIndices[iterationCount] = iterationCount;
+                
+                
+                // Normals needs to be set to 0 first before being calculated to avoid unpredictable issues
+                normals[iterationCount] = float3.zero;
+                normals[iterationCount+1] = float3.zero;
+                normals[iterationCount+2] = float3.zero;
+                
+                iterationCount += 3;
+            }
+
+            CalculateNormals(positions, triangleIndices, normals);
+            
+            meshData.subMeshCount = 1;
+            meshData.SetSubMesh(0, new SubMeshDescriptor(0, triangleIndexCount)
+            {
+                bounds = bounds,
+                vertexCount = vertexCount
+            }, MeshUpdateFlags.DontRecalculateBounds);
+
+        }
+        
+        private void CalculateNormals(NativeArray<float3> vertices, NativeArray<int> triangles, NativeArray<float3> normals)
+        {
+            int triangleCount = triangles.Length / 3;
+            for (int i = 0; i < triangleCount; i++)
+            {
+                int normalTriangleIndex = i * 3;
+                int vertexIndexA = triangles[normalTriangleIndex];
+                int vertexIndexB = triangles[normalTriangleIndex+1];
+                int vertexIndexC = triangles[normalTriangleIndex+2];
+
+                float3 triangleNormal = SurfaceNormal(vertexIndexA, vertexIndexB, vertexIndexC, vertices);
+                // normals are set to 0 beforehand to avoid unpredictable issues
+                normals[vertexIndexA] += triangleNormal;
+                normals[vertexIndexB] += triangleNormal;
+                normals[vertexIndexC] += triangleNormal;
+            }
+            
+            for (int i = 0; i < normals.Length; i++)
+            {
+                math.normalize(normals[i]);
+            }
+        }
+
+
+        float3 SurfaceNormal(int indexA, int indexB, int indexC, NativeArray<float3> vertices)
+        {
+            float3 pointA = vertices[indexA];
+            float3 pointB = vertices[indexB];
+            float3 pointC = vertices[indexC];
+            
+            float3 sideAB = pointB - pointA;
+            float3 sideAC = pointC - pointA;
+            return math.cross(sideAB, sideAC);
         }
     }
     
@@ -273,7 +364,17 @@ public class MapGenerator : MonoBehaviour
     {
         NativeArray<float> generatedMap = new NativeArray<float>(chunkHeight * supportedChunkSize * supportedChunkSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         NativeQueue<Triangle> triangles = new NativeQueue<Triangle>(Allocator.Persistent);
-
+        Bounds bounds = new Bounds(new Vector3(chunkSize / 2, chunkHeight / 2, chunkSize / 2), new Vector3(chunkSize, chunkHeight, chunkSize));
+        MeshFilter mf = chunkObject.AddComponent<MeshFilter>();
+        MeshRenderer mr = chunkObject.AddComponent<MeshRenderer>();
+        MeshCollider mc = chunkObject.AddComponent<MeshCollider>();
+        Mesh mesh = new Mesh()
+        {
+            bounds = bounds
+        };
+        mf.sharedMesh = mesh;
+        mr.material = meshMaterial;
+        
         // Ask generator to get MapData with RequestMapData & start generating mesh with OnMapDataReceive
         var mapDataJob = new MapDataJob()
         {
@@ -296,86 +397,75 @@ public class MapGenerator : MonoBehaviour
             triangulation = triangulation1D
         };
 
-        var marchHandle = marchJob.Schedule(generatedMap.Length, 4, mapDataHandle);
-        // marchHandle.Complete();
+        JobHandle marchHandle = marchJob.Schedule(generatedMap.Length, 4, mapDataHandle);
 
-        StartCoroutine(CreateChunkMesh(triangles, marchHandle, generatedMap, chunkObject));
+        
+        Mesh.MeshDataArray meshDataArray = Mesh.AllocateWritableMeshData(1);
+        
+        var chunkMeshJob = new ChunkMeshJob()
+        {
+            triangles = triangles,
+            bounds = bounds,
+            meshDataArray = meshDataArray
+        };
+
+        JobHandle chunkMeshHandle = chunkMeshJob.Schedule(marchHandle);
+
+
+        StartCoroutine(ApplyMeshData(meshDataArray, mesh, mc, triangles, generatedMap, chunkMeshHandle));
+        
     }
 
-    private IEnumerator CreateChunkMesh(NativeQueue<Triangle> triangles, JobHandle job, NativeArray<float> generatedMap, GameObject chunkObject)
+    private IEnumerator ApplyMeshData(Mesh.MeshDataArray meshDataArray, Mesh mesh, MeshCollider mc, NativeQueue<Triangle> triangles, NativeArray<float> mapData, JobHandle job)
     {
         yield return new WaitUntil(() => job.IsCompleted);
         job.Complete();
-        
-        MeshFilter mf = chunkObject.AddComponent<MeshFilter>();
-        MeshRenderer mr = chunkObject.AddComponent<MeshRenderer>();
-        Mesh mesh = new Mesh();
 
-        Vector3[] vertices = new Vector3[triangles.Count * 3];
-        int[] tris = new int[triangles.Count * 3];
-        int vertCount = 0;
-        
-        while (triangles.TryDequeue(out Triangle currentTriangle))
-        {
-            vertices[vertCount] = currentTriangle.a;
-            vertices[vertCount+1] = currentTriangle.b;
-            vertices[vertCount+2] = currentTriangle.c;
-            
-            tris[vertCount + 2] = vertCount;
-            tris[vertCount + 1] = vertCount + 1;
-            tris[vertCount] = vertCount + 2;
-            
-            vertCount += 3;
-        }
-        Vector3[] normals = CalculateNormals(vertices, tris);
-        
-        mesh.SetVertices(vertices);
-        mesh.SetTriangles(tris, 0);
-        mesh.SetNormals(normals);
-        
-        mf.mesh = mesh;
-        mr.material = meshMaterial;
+        Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh);
+
+        mc.sharedMesh = mesh;
         triangles.Dispose();
-        generatedMap.Dispose();        
-        chunkObject.AddComponent<MeshCollider>();
+        mapData.Dispose();
+
     }
-
-    private Vector3[] CalculateNormals(Vector3[] vertices, int[] triangles)
-    {
-        Vector3[] vertexNormals = new Vector3[vertices.Length];
-        int triangleCount = triangles.Length / 3;
-        for (int i = 0; i < triangleCount; i++)
-        {
-            int normalTriangleIndex = i * 3;
-            int vertexIndexA = triangles[normalTriangleIndex];
-            int vertexIndexB = triangles[normalTriangleIndex+1];
-            int vertexIndexC = triangles[normalTriangleIndex+2];
-
-            Vector3 triangleNormal = SurfaceNormalFromIndices(vertexIndexA, vertexIndexB, vertexIndexC, vertices);
-            vertexNormals[vertexIndexA] += triangleNormal;
-            vertexNormals[vertexIndexB] += triangleNormal;
-            vertexNormals[vertexIndexC] += triangleNormal;
-        }
-
-        for (int i = 0; i < vertexNormals.Length; i++)
-        {
-            vertexNormals[i].Normalize();
-        }
-
-        return vertexNormals;
-    }
-
-
-    Vector3 SurfaceNormalFromIndices(int indexA, int indexB, int indexC, Vector3[] vertices)
-    {
-        Vector3 pointA = vertices[indexA];
-        Vector3 pointB = vertices[indexB];
-        Vector3 pointC = vertices[indexC];
-
-        Vector3 sideAB = pointB - pointA;
-        Vector3 sideAC = pointC - pointA;
-        return Vector3.Cross(sideAB, sideAC).normalized;
-    } 
+    
+    // private IEnumerator CreateChunkMesh(NativeQueue<Triangle> triangles, JobHandle job, NativeArray<float> generatedMap, GameObject chunkObject)
+    // {
+    //     yield return new WaitUntil(() => job.IsCompleted);
+    //     job.Complete();
+    //     
+    //     MeshFilter mf = chunkObject.AddComponent<MeshFilter>();
+    //     MeshRenderer mr = chunkObject.AddComponent<MeshRenderer>();
+    //     Mesh mesh = new Mesh();
+    //
+    //
+    //     Vector3[] vertices = new Vector3[triangles.Count * 3];
+    //     int[] tris = new int[triangles.Count * 3];
+    //     int vertCount = 0;
+    //     
+    //     while (triangles.TryDequeue(out Triangle currentTriangle))
+    //     {
+    //         vertices[vertCount] = currentTriangle.a;
+    //         vertices[vertCount+1] = currentTriangle.b;
+    //         vertices[vertCount+2] = currentTriangle.c;
+    //         
+    //         tris[vertCount + 2] = vertCount;
+    //         tris[vertCount + 1] = vertCount + 1;
+    //         tris[vertCount] = vertCount + 2;
+    //         
+    //         vertCount += 3;
+    //     }
+    //     Vector3[] normals = CalculateNormals(vertices, tris);
+    //     
+    //     mesh.SetVertices(vertices);
+    //     mesh.SetTriangles(tris, 0);
+    //     mesh.SetNormals(normals);
+    //     
+    //     mf.mesh = mesh;
+    //     mr.material = meshMaterial;
+    //     triangles.Dispose();
+    //     generatedMap.Dispose();
+    // }
 
     public static int to1D( int x, int y, int z)
     {
