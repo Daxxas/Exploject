@@ -440,7 +440,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: adcf1a52731d4139bb01829ba7360aa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxViewDst: 256
+  maxViewDst: 2
   viewer: {fileID: 1412848652}
   generator: {fileID: 2127954275}
   mapParent: {fileID: 2127954276}
@@ -519,7 +519,7 @@ Light:
   m_BounceIntensity: 1
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 1.02e-43, y: 0, z: 0, w: 1.0968261e-11}
+  m_BoundingSphereOverride: {x: 1.02e-43, y: 0, z: 0, w: 1.8636352e+12}
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
