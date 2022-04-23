@@ -3,22 +3,22 @@ using Unity.Mathematics;
 
 public struct VanillaFunction
 {
-    private TestNoise3D testNoise3D;
+    private PlainNoise plainNoise;
 
     public VanillaFunction(int seed)
     {
-        testNoise3D = new TestNoise3D(seed);
+        plainNoise = new PlainNoise(seed);
     }
     
     public float GetResult(float x, float y, float z)
     {
-        return (-y / 64) + 1 + testNoise3D.GetNoise(x, y, z);
-        // return (-y / 64) + 1 + PlainNoise.GetNoise(x, z);
+        return -y + 64 + (plainNoise.GetNoise(x/2, z/2) +1 / 2) * 10;
+
+        return (-y +64) * ((plainNoise.GetNoise(x, z) + 1) / 2 * 10);
     }   
     
     public float GetResult(float3 xyz)
     {
-        return (-xyz.y / 64) + 1 + testNoise3D.GetNoise(xyz.x, xyz.y, xyz.z);
-        // return (-y / 64) + 1 + PlainNoise.GetNoise(x, z);
+        return GetResult(xyz.x, xyz.y, xyz.z);
     } 
 }
