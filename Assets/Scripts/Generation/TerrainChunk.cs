@@ -14,6 +14,7 @@ public class TerrainChunk
     public TerrainChunk(Vector2 coord, int size, MapGenerator generator, Transform mapParent)
     {
         this.generator = generator;
+        Debug.Log("New chunk at coord " + coord);
         position = coord * size;
         bounds = new Bounds(position, Vector2.one * size);
         Vector3 positionV3 = new Vector3(position.x, 0, position.y);
