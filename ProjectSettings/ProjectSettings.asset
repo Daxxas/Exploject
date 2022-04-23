@@ -696,7 +696,7 @@ PlayerSettings:
   webGLDecompressionFallback: 0
   scriptingDefineSymbols:
     : ODIN_INSPECTOR;ODIN_INSPECTOR_3
-    Standalone: ODIN_INSPECTOR;ODIN_INSPECTOR_3
+    Standalone: ODIN_INSPECTOR;ODIN_INSPECTOR_3;AMPLIFY_SHADER_EDITOR
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:

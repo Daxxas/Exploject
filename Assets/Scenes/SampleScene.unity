@@ -318,7 +318,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 2147483647
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -409,10 +409,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cube: {fileID: 1534796887566534916, guid: 003d608c44f531c4493b4e3ef0e100a9, type: 3}
-  meshMaterial: {fileID: 2100004, guid: ff6dc36862fe41641bb21568d92147c9, type: 3}
+  meshMaterial: {fileID: 2100000, guid: aea5e67c9b447254383c4b4b8f5604ca, type: 2}
   waterPreview: {fileID: 0}
   waterLevel: 0
-  seed: 310
+  seed: 633
 --- !u!4 &2127954276
 Transform:
   m_ObjectHideFlags: 0
@@ -440,7 +440,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: adcf1a52731d4139bb01829ba7360aa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxViewDst: 2
+  maxViewDst: 256
   viewer: {fileID: 1412848652}
   generator: {fileID: 2127954275}
   mapParent: {fileID: 2127954276}
@@ -519,7 +519,7 @@ Light:
   m_BounceIntensity: 1
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 1.02e-43, y: 0, z: 0, w: 1.8636352e+12}
+  m_BoundingSphereOverride: {x: 9.53e-43, y: 7.1e-44, z: 0, w: -0.000000028917455}
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
@@ -740,7 +740,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!1 &1113542044304154063
 GameObject:
   m_ObjectHideFlags: 0
