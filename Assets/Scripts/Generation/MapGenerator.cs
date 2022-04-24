@@ -320,8 +320,8 @@ public class MapGenerator : MonoBehaviour
             // so if a new triangle references an already placed vertex, we know where it is already in the array
             NativeHashMap<int3, int> matchingIndices = new NativeHashMap<int3, int>(initVertexCount, Allocator.Temp);
             // vertices & triangles arrays 
-            NativeList<int> chunkTriangles = new NativeList<int>(triangles.Count * 3, Allocator.Temp);
             NativeList<float3> chunkVertices = new NativeList<float3>(initVertexCount, Allocator.Temp);
+            NativeList<int> chunkTriangles = new NativeList<int>(triangles.Count * 3, Allocator.Temp);
             
             NativeList<float3> borderVertices = new NativeList<float3>((chunkSize * chunkHeight) * 4 + chunkHeight * 4, Allocator.Temp);
             NativeList<int> borderTriangles = new NativeList<int>(triangles.Count * 3, Allocator.Temp);
@@ -340,38 +340,61 @@ public class MapGenerator : MonoBehaviour
                 bool isBorderTriangle = isVertexABorder || isVertexBBorder || isVertexCBorder;
                 
                 
-                // Same as above for vertex C of triangle
+                // Order is C - B - A to have triangle in the right direction
+                
+                // Logic is :
+                // Vertices included in the final mesh have positive indices starting from 0
+                // Vertices on the border of the chunk have negative indices starting from 1
+                // Like that, when we loop through borderTriangles, we know from which array between chunkVertices and borderVertices
+                // we need to pull the vertex from
+
+                // borderTriangles have a mix of indices from chunkVertices and borderVertices (negative and positive indices)
 
                 if (isVertexCBorder)
                 {
+                    // If the vertex is on the border, meaning it's not in the final mesh
+                    // we try to add it to the matching indicies with the borderVerticesIndices as the matching index of the vertex 
                     if (matchingIndices.TryAdd(triangle.vertexIndexC, borderVerticesIndices))
                     {
+                        // add vertex to borderVertices for futur normal calculation
                         borderVertices.Add(uniqueVertices[triangle.vertexIndexC]);
+                        // add vertex index to borderTriangles
                         borderTriangles.Add(borderVerticesIndices);
+                        // borderVerticesIndices is a negative index, so we decrement it
                         borderVerticesIndices--;
                     }
                     else
                     {
+                        // Vertex outside of mesh already exists, we only add it to borderTriangles
                         borderTriangles.Add(matchingIndices[triangle.vertexIndexC]);
                     }
                 }
                 else
                 {
+                    // The vertex is in the chunk mesh
                     if (matchingIndices.TryAdd(triangle.vertexIndexC, chunkVerticesIndices))
                     {
+                        // if it's a vertex we don't know, add it to chunkVertices no matter if the vertex comes from
+                        // a border triangle or not.
+                        // If the vertex comes from a border triangle, it's ok, we will find it back through a mesh chunk triangle
                         chunkVertices.Add(uniqueVertices[triangle.vertexIndexC]);
+                        
                         if (!isBorderTriangle)
                         {
                             chunkTriangles.Add(chunkVerticesIndices);
                         }
                         else
                         {
+                            // if the triangle we are currently looping through if a triangle in the border
+                            // we add the vertex index to borderTriangles
+                            // This is why borderTriangles contains positive indices 
                             borderTriangles.Add(chunkVerticesIndices);
                         }
                         chunkVerticesIndices++;
                     }
                     else
                     {
+                        // Same logic as commment above
                         if (!isBorderTriangle)
                         {
                             chunkTriangles.Add(matchingIndices[triangle.vertexIndexC]);
@@ -383,7 +406,7 @@ public class MapGenerator : MonoBehaviour
                     }
                 }
                 
-                
+                // Same logic for vertex B of triangle
                 if (isVertexBBorder)
                 {
                     if (matchingIndices.TryAdd(triangle.vertexIndexB, borderVerticesIndices))
@@ -425,6 +448,7 @@ public class MapGenerator : MonoBehaviour
                     }
                 }
                 
+                // Same logic for vertex A of triangle
                 if (isVertexABorder)
                 {
                     if (matchingIndices.TryAdd(triangle.vertexIndexA, borderVerticesIndices))
@@ -493,6 +517,8 @@ public class MapGenerator : MonoBehaviour
 
             CalculateNormals(chunkVertices, borderVertices, borderTriangles, triangleIndices, normals);
             
+            // Not necessary, only to have non triplanar material working a bit
+            // Non-triplanar materials will be streched vertically
             SetBasicUVs( meshDataVertices, meshData.GetVertexData<float2>(3));
             
             // Finalize meshData
@@ -513,6 +539,7 @@ public class MapGenerator : MonoBehaviour
 
         private void CalculateNormals(NativeArray<float3> vertices, NativeArray<float3> borderVertices, NativeArray<int> borderTriangles, NativeArray<int> triangles, NativeArray<float3> normals)
         {
+            // Loop through border triangles
             for (int i = 0; i < borderTriangles.Length / 3; i++)
             {
                 int normalTriangleIndex = i * 3;
@@ -522,6 +549,7 @@ public class MapGenerator : MonoBehaviour
                 
                 float3 triangleNormal = SurfaceNormal(vertexIndexA, vertexIndexB, vertexIndexC, vertices, borderVertices);
                 
+                // Only update vertex in the triangle that are in the chunk mesh
                 if (vertexIndexA >= 0)
                 {
                     normals[vertexIndexA] += triangleNormal;
@@ -534,9 +562,9 @@ public class MapGenerator : MonoBehaviour
                 {
                     normals[vertexIndexC] += triangleNormal;
                 }
-                
             }
             
+            // Loop through chunk triangles
             for (int i = 0; i < triangles.Length  / 3; i++)
             {
                 int normalTriangleIndex = i * 3;
@@ -559,6 +587,8 @@ public class MapGenerator : MonoBehaviour
 
         float3 SurfaceNormal(int indexA, int indexB, int indexC, NativeArray<float3> vertices, NativeArray<float3> borderVertices)
         {
+            // Get vertex from the right vertices array based on the index in the triangle
+            // This is the reason why we have negative indices in the triangle array for the border
             float3 pointA = (indexA < 0) ? borderVertices[-indexA-1] : vertices[indexA];
             float3 pointB = (indexB < 0) ? borderVertices[-indexB-1] : vertices[indexB];
             float3 pointC = (indexC < 0) ? borderVertices[-indexC-1] : vertices[indexC];
