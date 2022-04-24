@@ -409,7 +409,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cube: {fileID: 1534796887566534916, guid: 003d608c44f531c4493b4e3ef0e100a9, type: 3}
-  meshMaterial: {fileID: 2100004, guid: efe9381559c516743bd05cef82f39ebb, type: 3}
+  meshMaterial: {fileID: 2100000, guid: aea5e67c9b447254383c4b4b8f5604ca, type: 2}
   waterPreview: {fileID: 0}
   waterLevel: 0
   seed: 633

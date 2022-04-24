@@ -292,6 +292,7 @@ public class MapGenerator : MonoBehaviour
             Mesh.MeshData meshData = meshDataArray[0];
             
             #region initialize meshData
+            
             int vertexAttributeCount = 4;
             int initVertexCount = triangles.Count * 3;
             int triangleIndexCount = triangles.Count * 3;
@@ -319,80 +320,166 @@ public class MapGenerator : MonoBehaviour
             // so if a new triangle references an already placed vertex, we know where it is already in the array
             NativeHashMap<int3, int> matchingIndices = new NativeHashMap<int3, int>(initVertexCount, Allocator.Temp);
             // vertices & triangles arrays 
-            NativeList<int> finalTriangleIndices = new NativeList<int>(triangles.Count * 3, Allocator.Temp);
-            NativeList<float3> finalVertices = new NativeList<float3>(initVertexCount, Allocator.Temp);
+            NativeList<int> chunkTriangles = new NativeList<int>(triangles.Count * 3, Allocator.Temp);
+            NativeList<float3> chunkVertices = new NativeList<float3>(initVertexCount, Allocator.Temp);
+            
             NativeList<float3> borderVertices = new NativeList<float3>((chunkSize * chunkHeight) * 4 + chunkHeight * 4, Allocator.Temp);
             NativeList<int> borderTriangles = new NativeList<int>(triangles.Count * 3, Allocator.Temp);
             // Transform the hashmap of int3, float3 to an array of vertices (int, float3)
             // For every triangle
+
+            int chunkVerticesIndices = 0;
+            int borderVerticesIndices = -1;
             while (triangles.TryDequeue(out Triangle triangle))
             {
+                
+                // If triangle is in a border
                 bool isVertexABorder = triangle.vertexIndexA.x < 0 || triangle.vertexIndexA.z < 0 || triangle.vertexIndexA.x > chunkSize * 100 || triangle.vertexIndexA.z > chunkSize * 100;
                 bool isVertexBBorder = triangle.vertexIndexB.x < 0 || triangle.vertexIndexB.z < 0 || triangle.vertexIndexB.x > chunkSize * 100 || triangle.vertexIndexB.z > chunkSize * 100;
                 bool isVertexCBorder = triangle.vertexIndexC.x < 0 || triangle.vertexIndexC.z < 0 || triangle.vertexIndexC.x > chunkSize * 100 || triangle.vertexIndexC.z > chunkSize * 100;
-
-                if (isVertexABorder || isVertexBBorder || isVertexCBorder)
-                {
-                    continue;
-                } 
-
+                bool isBorderTriangle = isVertexABorder || isVertexBBorder || isVertexCBorder;
+                
                 
                 // Same as above for vertex C of triangle
-                if (matchingIndices.TryAdd(triangle.vertexIndexC, finalVertices.Length))
+
+                if (isVertexCBorder)
                 {
-                    finalVertices.Add(uniqueVertices[triangle.vertexIndexC]);
-                    finalTriangleIndices.Add(finalVertices.Length-1);
+                    if (matchingIndices.TryAdd(triangle.vertexIndexC, borderVerticesIndices))
+                    {
+                        borderVertices.Add(uniqueVertices[triangle.vertexIndexC]);
+                        borderTriangles.Add(borderVerticesIndices);
+                        borderVerticesIndices--;
+                    }
+                    else
+                    {
+                        borderTriangles.Add(matchingIndices[triangle.vertexIndexC]);
+                    }
                 }
                 else
                 {
-                    finalTriangleIndices.Add(matchingIndices[triangle.vertexIndexC]);
+                    if (matchingIndices.TryAdd(triangle.vertexIndexC, chunkVerticesIndices))
+                    {
+                        chunkVertices.Add(uniqueVertices[triangle.vertexIndexC]);
+                        if (!isBorderTriangle)
+                        {
+                            chunkTriangles.Add(chunkVerticesIndices);
+                        }
+                        else
+                        {
+                            borderTriangles.Add(chunkVerticesIndices);
+                        }
+                        chunkVerticesIndices++;
+                    }
+                    else
+                    {
+                        if (!isBorderTriangle)
+                        {
+                            chunkTriangles.Add(matchingIndices[triangle.vertexIndexC]);
+                        }
+                        else
+                        {
+                            borderTriangles.Add(matchingIndices[triangle.vertexIndexC]);
+                        }
+                    }
                 }
                 
-
-
-                // Same as above for vertex B of triangle
-                if (matchingIndices.TryAdd(triangle.vertexIndexB, finalVertices.Length))
+                
+                if (isVertexBBorder)
                 {
-                    finalVertices.Add(uniqueVertices[triangle.vertexIndexB]);
-                    finalTriangleIndices.Add(finalVertices.Length-1);
+                    if (matchingIndices.TryAdd(triangle.vertexIndexB, borderVerticesIndices))
+                    {
+                        borderVertices.Add(uniqueVertices[triangle.vertexIndexB]);
+                        borderTriangles.Add(borderVerticesIndices);
+                        borderVerticesIndices--;
+                    }
+                    else
+                    {
+                        borderTriangles.Add(matchingIndices[triangle.vertexIndexB]);
+                    }
                 }
                 else
                 {
-                    finalTriangleIndices.Add(matchingIndices[triangle.vertexIndexB]);
+                    if (matchingIndices.TryAdd(triangle.vertexIndexB, chunkVerticesIndices))
+                    {
+                        chunkVertices.Add(uniqueVertices[triangle.vertexIndexB]);
+                        if (!isBorderTriangle)
+                        {
+                            chunkTriangles.Add(chunkVerticesIndices);
+                        }
+                        else
+                        {
+                            borderTriangles.Add(chunkVerticesIndices);
+                        }
+                        chunkVerticesIndices++;
+                    }
+                    else
+                    {
+                        if (!isBorderTriangle)
+                        {
+                            chunkTriangles.Add(matchingIndices[triangle.vertexIndexB]);
+                        }
+                        else
+                        {
+                            borderTriangles.Add(matchingIndices[triangle.vertexIndexB]);
+                        }
+                    }
                 }
                 
-                
-
-                // try to see if we already added the vertex 
-                if (matchingIndices.TryAdd(triangle.vertexIndexA, finalVertices.Length))
+                if (isVertexABorder)
                 {
-                    // If we didn't already added the vertex we save that we did, and where in the array we added it
-
-                    // add it to vertices array
-                    finalVertices.Add(uniqueVertices[triangle.vertexIndexA]);
-                    // vertex index is the current last position (we are not writing in parallel in the array so it's ok)
-                    finalTriangleIndices.Add(finalVertices.Length-1);
+                    if (matchingIndices.TryAdd(triangle.vertexIndexA, borderVerticesIndices))
+                    {
+                        borderVertices.Add(uniqueVertices[triangle.vertexIndexA]);
+                        borderTriangles.Add(borderVerticesIndices);
+                        borderVerticesIndices--;
+                    }
+                    else
+                    {
+                        borderTriangles.Add(matchingIndices[triangle.vertexIndexA]);
+                    }
                 }
                 else
                 {
-                    // If we already added the vertex in the vertices array
-                    // we only need to add the vertex index to the triangles array
-                    finalTriangleIndices.Add(matchingIndices[triangle.vertexIndexA]);
+
+                    if (matchingIndices.TryAdd(triangle.vertexIndexA, chunkVerticesIndices))
+                    {
+                        chunkVertices.Add(uniqueVertices[triangle.vertexIndexA]);
+                        if (!isBorderTriangle)
+                        {
+                            chunkTriangles.Add(chunkVerticesIndices);
+                        }
+                        else
+                        {
+                            borderTriangles.Add(chunkVerticesIndices);
+                        }
+                        chunkVerticesIndices++;
+                    }
+                    else
+                    {
+                        if (!isBorderTriangle)
+                        {
+                            chunkTriangles.Add(matchingIndices[triangle.vertexIndexA]);
+                        }
+                        else
+                        {
+                            borderTriangles.Add(matchingIndices[triangle.vertexIndexA]);
+                        }
+                    }
                 }
             }
-
+            
             // Apply calculated array to mesh data arrays
             // we don't know in advance the vertices array length, so it's not possible to directly modify the
             // meshData vertices array
-            meshData.SetVertexBufferParams(finalVertices.Length, vertexAttributes);
-            meshData.SetIndexBufferParams(finalTriangleIndices.Length, IndexFormat.UInt32);
+            meshData.SetVertexBufferParams(chunkVertices.Length, vertexAttributes);
+            meshData.SetIndexBufferParams(chunkTriangles.Length, IndexFormat.UInt32);
             vertexAttributes.Dispose();
 
             NativeArray<float3> meshDataVertices = meshData.GetVertexData<float3>();
             NativeArray<int> triangleIndices = meshData.GetIndexData<int>();
             
-            finalVertices.AsArray().CopyTo(meshDataVertices);
-            finalTriangleIndices.AsArray().CopyTo(triangleIndices);
+            chunkVertices.AsArray().CopyTo(meshDataVertices);
+            chunkTriangles.AsArray().CopyTo(triangleIndices);
             
             
             // Normal calculation
@@ -404,37 +491,60 @@ public class MapGenerator : MonoBehaviour
                 normals[i] = float3.zero;
             }
 
-            CalculateNormals(meshDataVertices, borderVertices, triangleIndices, normals);
+            CalculateNormals(chunkVertices, borderVertices, borderTriangles, triangleIndices, normals);
             
             SetBasicUVs( meshDataVertices, meshData.GetVertexData<float2>(3));
             
             // Finalize meshData
             meshData.subMeshCount = 1;
-            meshData.SetSubMesh(0, new SubMeshDescriptor(0, finalTriangleIndices.Length)
+            meshData.SetSubMesh(0, new SubMeshDescriptor(0, chunkTriangles.Length)
             {
                 bounds = bounds,
-                vertexCount = finalVertices.Length
+                vertexCount = chunkVertices.Length
             }, MeshUpdateFlags.DontRecalculateBounds);
             
             /////////////////////////////////
             matchingIndices.Dispose();
-            finalVertices.Dispose();
-            finalTriangleIndices.Dispose();
+            chunkVertices.Dispose();
+            chunkTriangles.Dispose();
             borderTriangles.Dispose();
             borderVertices.Dispose();
         }
 
-        private void CalculateNormals(NativeArray<float3> vertices, NativeArray<float3> borderVertices, NativeArray<int> triangles, NativeArray<float3> normals)
+        private void CalculateNormals(NativeArray<float3> vertices, NativeArray<float3> borderVertices, NativeArray<int> borderTriangles, NativeArray<int> triangles, NativeArray<float3> normals)
         {
-            int triangleCount = triangles.Length / 3;
-            for (int i = 0; i < triangleCount; i++)
+            for (int i = 0; i < borderTriangles.Length / 3; i++)
+            {
+                int normalTriangleIndex = i * 3;
+                int vertexIndexA = borderTriangles[normalTriangleIndex];
+                int vertexIndexB = borderTriangles[normalTriangleIndex+1];
+                int vertexIndexC = borderTriangles[normalTriangleIndex+2];
+                
+                float3 triangleNormal = SurfaceNormal(vertexIndexA, vertexIndexB, vertexIndexC, vertices, borderVertices);
+                
+                if (vertexIndexA >= 0)
+                {
+                    normals[vertexIndexA] += triangleNormal;
+                }
+                if (vertexIndexB >= 0)
+                {
+                    normals[vertexIndexB] += triangleNormal;
+                }
+                if (vertexIndexC >= 0)
+                {
+                    normals[vertexIndexC] += triangleNormal;
+                }
+                
+            }
+            
+            for (int i = 0; i < triangles.Length  / 3; i++)
             {
                 int normalTriangleIndex = i * 3;
                 int vertexIndexA = triangles[normalTriangleIndex];
                 int vertexIndexB = triangles[normalTriangleIndex+1];
                 int vertexIndexC = triangles[normalTriangleIndex+2];
 
-                float3 triangleNormal = SurfaceNormal(vertexIndexA, vertexIndexB, vertexIndexC, vertices);
+                float3 triangleNormal = SurfaceNormal(vertexIndexA, vertexIndexB, vertexIndexC, vertices, borderVertices);
                 // normals are set to 0 beforehand to avoid unpredictable issues
                 normals[vertexIndexA] += triangleNormal;
                 normals[vertexIndexB] += triangleNormal;
@@ -447,11 +557,11 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
-        float3 SurfaceNormal(int indexA, int indexB, int indexC, NativeArray<float3> vertices)
+        float3 SurfaceNormal(int indexA, int indexB, int indexC, NativeArray<float3> vertices, NativeArray<float3> borderVertices)
         {
-            float3 pointA = vertices[indexA];
-            float3 pointB = vertices[indexB];
-            float3 pointC = vertices[indexC];
+            float3 pointA = (indexA < 0) ? borderVertices[-indexA-1] : vertices[indexA];
+            float3 pointB = (indexB < 0) ? borderVertices[-indexB-1] : vertices[indexB];
+            float3 pointC = (indexC < 0) ? borderVertices[-indexC-1] : vertices[indexC];
             
             float3 sideAB = pointB - pointA;
             float3 sideAC = pointC - pointA;
@@ -561,11 +671,11 @@ public class MapGenerator : MonoBehaviour
         JobHandle chunkMeshHandle = chunkMeshJob.Schedule(marchHandle);
 
 
-        StartCoroutine(ApplyMeshData(position, meshDataArray, mesh, mc, vertices, triangles, generatedMap, chunkMeshHandle));
+        StartCoroutine(ApplyMeshData(meshDataArray, mesh, mc, vertices, triangles, generatedMap, chunkMeshHandle));
         
     }
 
-    private IEnumerator ApplyMeshData(Vector2 pos, Mesh.MeshDataArray meshDataArray, Mesh mesh, MeshCollider mc, NativeHashMap<int3, float3> vertices, NativeQueue<Triangle> triangles, NativeArray<float> mapData, JobHandle job)
+    private IEnumerator ApplyMeshData(Mesh.MeshDataArray meshDataArray, Mesh mesh, MeshCollider mc, NativeHashMap<int3, float3> vertices, NativeQueue<Triangle> triangles, NativeArray<float> mapData, JobHandle job)
     {
         yield return new WaitUntil(() => job.IsCompleted);
         job.Complete();
@@ -588,10 +698,12 @@ public class MapGenerator : MonoBehaviour
     {
         var g = new GameObject("Info of " + offset.x + " " + offset.y);
         
-        for (int i = 0; i < vertices.GetKeyValueArrays(Allocator.Persistent).Keys.Length; i++)
+        var vertexKeyValues = vertices.GetKeyValueArrays(Allocator.Persistent);
+        var vertex = vertexKeyValues.Values;
+        var vertexIndex = vertexKeyValues.Keys;
+        
+        for (int i = 0; i < vertexIndex.Length; i++)
         {
-            var vertex = vertices.GetKeyValueArrays(Allocator.Persistent).Values[i];
-            var vertexIndex = vertices.GetKeyValueArrays(Allocator.Persistent).Keys[i];
         
             var tmp = new GameObject();
             var tmpc = tmp.AddComponent<TextMeshPro>();
@@ -600,12 +712,14 @@ public class MapGenerator : MonoBehaviour
             tmpc.alignment = TextAlignmentOptions.Midline;
             
             var c = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            c.transform.position = new Vector3(vertex.x + offset.x, vertex.y, offset.y + vertex.z);
+            c.transform.position = new Vector3(vertex[i].x + offset.x, vertex[i].y, offset.y + vertex[i].z);
             c.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
             c.transform.parent = g.transform;
             tmp.transform.parent = c.transform;
             tmp.transform.localPosition = new Vector3(0, 0.5f, 0);
         }
+
+        vertexKeyValues.Dispose();
     }
     
     public static int to1D( int x, int y, int z)
