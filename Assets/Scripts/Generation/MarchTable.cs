@@ -1,5 +1,9 @@
-﻿public static class MarchTable
+﻿using Unity.Collections;
+
+public static class MarchTable
 {
+
+
     public static int[] edges = new int[256]
     {
         0x0,
@@ -520,7 +524,7 @@
         {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }
     };
     
-    public static int[] triangulation1D = new int[4096]
+    public static int[] triangulation1DArray = new int[4096]
     {
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 ,
          0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 ,
@@ -784,7 +788,7 @@
     // For edge index 0, arrays would return corners 0 and 1
     
     // From an edge index, gives matching corner A  
-    public static int[] cornerIndexAFromEdge = new int[12] {
+    public static int[] cornerIndexAFromEdgeArray = new int[12] {
         0,
         1,
         2,
@@ -800,7 +804,7 @@
     };
     
     // From an edge index, gives matching corner B
-    public static int[] cornerIndexBFromEdge = new int[12] {
+    public static int[] cornerIndexBFromEdgeArray = new int[12] {
         1,
         2,
         3,

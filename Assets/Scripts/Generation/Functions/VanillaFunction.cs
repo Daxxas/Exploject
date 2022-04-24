@@ -14,9 +14,9 @@ public struct VanillaFunction
     
     public float GetResult(float x, float y, float z)
     {
-        return (-y / 64) + 1 + testNoise3D.GetNoise(x, y, z);
+        // return (-y / 64) + 1 + testNoise3D.GetNoise(x, y, z);
         
-        // return -y + 64 + (testNoise3D.GetNoise(x/2, y/2, z/2) + 1 / 2) * 10;
+        return -y + 64 + (plainNoise.GetNoise(x/2, z/2) +1 / 2) * 10;
     }   
     
     public float GetResult(float3 xyz)

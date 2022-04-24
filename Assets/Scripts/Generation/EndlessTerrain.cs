@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using Unity.Jobs;
 using UnityEngine;
 
@@ -7,18 +8,21 @@ public class EndlessTerrain : MonoBehaviour
 {
     [SerializeField] private float maxViewDst = 8;
     [SerializeField] private Transform viewer;
-    [SerializeField] private MapGenerator generator;
+    [SerializeField] private MapDataGenerator dataGenerator;
+    [SerializeField] private GameObject chunkObject;
     [SerializeField] private Transform mapParent;
     
-    public static Vector2 viewerPosition;
+    [ShowInInspector] public static Vector2 viewerPosition;
     private int chunkSize;
+    private int chunkHeight;
     private int chunksVisibleInViewDst;
 
     private Dictionary<Vector2, TerrainChunk> terrainChunkDic = new Dictionary<Vector2, TerrainChunk>();
     private List<TerrainChunk> terrainChunksVisibleLastUpdate = new List<TerrainChunk>();
     private void Start()
     {
-        chunkSize = MapGenerator.chunkSize; 
+        chunkSize = MapDataGenerator.chunkSize; 
+        chunkHeight = MapDataGenerator.chunkHeight; 
         chunksVisibleInViewDst = Mathf.RoundToInt(maxViewDst / chunkSize);
         // Debug.Log($"chunksVisibleInViewDst: {chunksVisibleInViewDst}");
     }
@@ -33,11 +37,11 @@ public class EndlessTerrain : MonoBehaviour
 
     private void UpdateVisibleChunks()
     {
-        // foreach (var terrainChunk in terrainChunksVisibleLastUpdate)
-        // {
-        //     terrainChunk.SetVisible(false);
-        // }
-        // terrainChunksVisibleLastUpdate.Clear();
+        foreach (var terrainChunk in terrainChunksVisibleLastUpdate)
+        {
+            terrainChunk.SetVisible(false);
+        }
+        terrainChunksVisibleLastUpdate.Clear();
 
         int currentChunkCoordX = Mathf.RoundToInt(viewerPosition.x / chunkSize);
         int currentChunkCoordZ = Mathf.RoundToInt(viewerPosition.y / chunkSize);
@@ -50,15 +54,16 @@ public class EndlessTerrain : MonoBehaviour
                 
                 if (terrainChunkDic.ContainsKey(viewedChunkCoord))
                 {
-                    terrainChunkDic[viewedChunkCoord].UpdateChunk();
-                    if (terrainChunkDic[viewedChunkCoord].IsVisible())
-                    {
-                        terrainChunksVisibleLastUpdate.Add(terrainChunkDic[viewedChunkCoord]);
-                    }
+                    terrainChunkDic[viewedChunkCoord].UpdateChunk(maxViewDst, viewerPosition);
+                    // if (terrainChunkDic[viewedChunkCoord].IsVisible())
+                    // {
+                    //     terrainChunksVisibleLastUpdate.Add(terrainChunkDic[viewedChunkCoord]);
+                    // }
                 }
                 else
                 {
-                    terrainChunkDic.Add(viewedChunkCoord, new TerrainChunk(viewedChunkCoord, chunkSize, generator, mapParent));
+                    var instantiatedChunk = Instantiate(chunkObject);
+                    terrainChunkDic.Add(viewedChunkCoord, instantiatedChunk.GetComponent<TerrainChunk>().InitChunk(viewedChunkCoord, dataGenerator, mapParent));
                 }
             }
         }

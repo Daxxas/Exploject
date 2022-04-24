@@ -408,10 +408,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7183de83980f17e4d9b2f6441ad8af76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cube: {fileID: 1534796887566534916, guid: 003d608c44f531c4493b4e3ef0e100a9, type: 3}
-  meshMaterial: {fileID: 2100000, guid: aea5e67c9b447254383c4b4b8f5604ca, type: 2}
-  waterPreview: {fileID: 0}
-  waterLevel: 0
   seed: 633
 --- !u!4 &2127954276
 Transform:
@@ -440,9 +436,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: adcf1a52731d4139bb01829ba7360aa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxViewDst: 2
+  maxViewDst: 256
   viewer: {fileID: 1412848652}
-  generator: {fileID: 2127954275}
+  dataGenerator: {fileID: 2127954275}
+  chunkObject: {fileID: 4480448243231049190, guid: 649b64edaf196d64b80094718a2edf9a, type: 3}
   mapParent: {fileID: 2127954276}
 --- !u!1 &2138677391
 GameObject:

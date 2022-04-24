@@ -14,7 +14,7 @@ public class UIHandler : MonoBehaviour
     [SerializeField] private Slider waterLevelSlider;
     [SerializeField] private TMP_InputField waterLevelField;
 
-    [SerializeField] private MapGenerator mapGenerator;
+    [SerializeField] private MapDataGenerator mapDataGenerator;
 
     public void UpdateEquation()
     {
@@ -23,6 +23,6 @@ public class UIHandler : MonoBehaviour
 
     public void UpdateSeed()
     {
-        mapGenerator.seed = int.Parse(seedField.text);
+        mapDataGenerator.seed = int.Parse(seedField.text);
     }
 }
