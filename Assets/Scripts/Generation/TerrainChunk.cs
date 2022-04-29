@@ -163,7 +163,6 @@ public class TerrainChunk : MonoBehaviour
     
     public void DebugData(NativeArray<float> map)
     {
-
         for (int idx = 0; idx < map.Length; idx++)
         {
             int x = idx % MapDataGenerator.supportedChunkSize;
@@ -232,7 +231,7 @@ public class TerrainChunk : MonoBehaviour
             int z = idx / (supportedChunkSize * chunkHeight);
 
             // Don't calculate when we are too close to the edge of the chunk to prevent out of bound
-            if (x < 1 || y < 1 || z < 1 || x >= supportedChunkSize-2 || y >= chunkHeight-2 || z >= supportedChunkSize-2)
+            if (x < 1 || y < 1 || z < 1 || x >= supportedChunkSize-3 || y >= chunkHeight-3 || z >= supportedChunkSize-3)
             {
                 return;
             }
@@ -433,10 +432,6 @@ public class TerrainChunk : MonoBehaviour
             NativeList<float3> chunkVertices = new NativeList<float3>(initVertexCount, Allocator.Temp);
             NativeList<int> chunkTriangles = new NativeList<int>(triangles.Count * 3, Allocator.Temp);
             
-            NativeList<float3> borderVertices = new NativeList<float3>((chunkSize * chunkHeight) * 4 + chunkHeight * 4, Allocator.Temp);
-            NativeList<int> borderTriangles = new NativeList<int>(triangles.Count * 3, Allocator.Temp);
-            // Transform the hashmap of int3, float3 to an array of vertices (int, float3)
-            // For every triangle
 
             int chunkVerticesIndices = 0;
             int borderVerticesIndices = -1;
@@ -448,7 +443,8 @@ public class TerrainChunk : MonoBehaviour
                 bool isVertexBBorder = triangle.vertexIndexB.x < 0 || triangle.vertexIndexB.z < 0 || triangle.vertexIndexB.x > chunkSize * 100 || triangle.vertexIndexB.z > chunkSize * 100;
                 bool isVertexCBorder = triangle.vertexIndexC.x < 0 || triangle.vertexIndexC.z < 0 || triangle.vertexIndexC.x > chunkSize * 100 || triangle.vertexIndexC.z > chunkSize * 100;
                 bool isBorderTriangle = isVertexABorder || isVertexBBorder || isVertexCBorder;
-                
+                if (isBorderTriangle)
+                    continue;
                 
                 // Order is C - B - A to have triangle in the right direction
                 
@@ -460,145 +456,48 @@ public class TerrainChunk : MonoBehaviour
 
                 // borderTriangles have a mix of indices from chunkVertices and borderVertices (negative and positive indices)
 
-                if (isVertexCBorder)
+                // The vertex is in the chunk mesh
+                if (matchingIndices.TryAdd(triangle.vertexIndexC, chunkVerticesIndices))
                 {
-                    // If the vertex is on the border, meaning it's not in the final mesh
-                    // we try to add it to the matching indicies with the borderVerticesIndices as the matching index of the vertex 
-                    if (matchingIndices.TryAdd(triangle.vertexIndexC, borderVerticesIndices))
-                    {
-                        // add vertex to borderVertices for futur normal calculation
-                        borderVertices.Add(uniqueVertices[triangle.vertexIndexC]);
-                        // add vertex index to borderTriangles
-                        borderTriangles.Add(borderVerticesIndices);
-                        // borderVerticesIndices is a negative index, so we decrement it
-                        borderVerticesIndices--;
-                    }
-                    else
-                    {
-                        // Vertex outside of mesh already exists, we only add it to borderTriangles
-                        borderTriangles.Add(matchingIndices[triangle.vertexIndexC]);
-                    }
+                    // if it's a vertex we don't know, add it to chunkVertices no matter if the vertex comes from
+                    // a border triangle or not.
+                    // If the vertex comes from a border triangle, it's ok, we will find it back through a mesh chunk triangle
+                    chunkVertices.Add(uniqueVertices[triangle.vertexIndexC]);
+                    chunkTriangles.Add(chunkVerticesIndices);
+
+                    chunkVerticesIndices++;
                 }
                 else
                 {
-                    // The vertex is in the chunk mesh
-                    if (matchingIndices.TryAdd(triangle.vertexIndexC, chunkVerticesIndices))
-                    {
-                        // if it's a vertex we don't know, add it to chunkVertices no matter if the vertex comes from
-                        // a border triangle or not.
-                        // If the vertex comes from a border triangle, it's ok, we will find it back through a mesh chunk triangle
-                        chunkVertices.Add(uniqueVertices[triangle.vertexIndexC]);
-                        
-                        if (!isBorderTriangle)
-                        {
-                            chunkTriangles.Add(chunkVerticesIndices);
-                        }
-                        else
-                        {
-                            // if the triangle we are currently looping through if a triangle in the border
-                            // we add the vertex index to borderTriangles
-                            // This is why borderTriangles contains positive indices 
-                            borderTriangles.Add(chunkVerticesIndices);
-                        }
-                        chunkVerticesIndices++;
-                    }
-                    else
-                    {
-                        // Same logic as commment above
-                        if (!isBorderTriangle)
-                        {
-                            chunkTriangles.Add(matchingIndices[triangle.vertexIndexC]);
-                        }
-                        else
-                        {
-                            borderTriangles.Add(matchingIndices[triangle.vertexIndexC]);
-                        }
-                    }
+                    // Same logic as commment above
+                    chunkTriangles.Add(matchingIndices[triangle.vertexIndexC]);
                 }
                 
                 // Same logic for vertex B of triangle
-                if (isVertexBBorder)
+                if (matchingIndices.TryAdd(triangle.vertexIndexB, chunkVerticesIndices))
                 {
-                    if (matchingIndices.TryAdd(triangle.vertexIndexB, borderVerticesIndices))
-                    {
-                        borderVertices.Add(uniqueVertices[triangle.vertexIndexB]);
-                        borderTriangles.Add(borderVerticesIndices);
-                        borderVerticesIndices--;
-                    }
-                    else
-                    {
-                        borderTriangles.Add(matchingIndices[triangle.vertexIndexB]);
-                    }
+                    chunkVertices.Add(uniqueVertices[triangle.vertexIndexB]);
+                    chunkTriangles.Add(chunkVerticesIndices);
+
+                    chunkVerticesIndices++;
                 }
                 else
                 {
-                    if (matchingIndices.TryAdd(triangle.vertexIndexB, chunkVerticesIndices))
-                    {
-                        chunkVertices.Add(uniqueVertices[triangle.vertexIndexB]);
-                        if (!isBorderTriangle)
-                        {
-                            chunkTriangles.Add(chunkVerticesIndices);
-                        }
-                        else
-                        {
-                            borderTriangles.Add(chunkVerticesIndices);
-                        }
-                        chunkVerticesIndices++;
-                    }
-                    else
-                    {
-                        if (!isBorderTriangle)
-                        {
-                            chunkTriangles.Add(matchingIndices[triangle.vertexIndexB]);
-                        }
-                        else
-                        {
-                            borderTriangles.Add(matchingIndices[triangle.vertexIndexB]);
-                        }
-                    }
+                    chunkTriangles.Add(matchingIndices[triangle.vertexIndexB]);
+
                 }
                 
                 // Same logic for vertex A of triangle
-                if (isVertexABorder)
+                if (matchingIndices.TryAdd(triangle.vertexIndexA, chunkVerticesIndices))
                 {
-                    if (matchingIndices.TryAdd(triangle.vertexIndexA, borderVerticesIndices))
-                    {
-                        borderVertices.Add(uniqueVertices[triangle.vertexIndexA]);
-                        borderTriangles.Add(borderVerticesIndices);
-                        borderVerticesIndices--;
-                    }
-                    else
-                    {
-                        borderTriangles.Add(matchingIndices[triangle.vertexIndexA]);
-                    }
+                    chunkVertices.Add(uniqueVertices[triangle.vertexIndexA]);
+                    chunkTriangles.Add(chunkVerticesIndices);
+                    chunkVerticesIndices++;
                 }
                 else
                 {
+                    chunkTriangles.Add(matchingIndices[triangle.vertexIndexA]);
 
-                    if (matchingIndices.TryAdd(triangle.vertexIndexA, chunkVerticesIndices))
-                    {
-                        chunkVertices.Add(uniqueVertices[triangle.vertexIndexA]);
-                        if (!isBorderTriangle)
-                        {
-                            chunkTriangles.Add(chunkVerticesIndices);
-                        }
-                        else
-                        {
-                            borderTriangles.Add(chunkVerticesIndices);
-                        }
-                        chunkVerticesIndices++;
-                    }
-                    else
-                    {
-                        if (!isBorderTriangle)
-                        {
-                            chunkTriangles.Add(matchingIndices[triangle.vertexIndexA]);
-                        }
-                        else
-                        {
-                            borderTriangles.Add(matchingIndices[triangle.vertexIndexA]);
-                        }
-                    }
                 }
             }
             
@@ -625,7 +524,7 @@ public class TerrainChunk : MonoBehaviour
                 normals[i] = float3.zero;
             }
 
-            CalculateNormals(chunkVertices, borderVertices, borderTriangles, triangleIndices, normals);
+            CalculateNormals(chunkVertices, normals);
             
             // Not necessary, only to have non triplanar material working a bit
             // Non-triplanar materials will be streched vertically
@@ -643,11 +542,11 @@ public class TerrainChunk : MonoBehaviour
             matchingIndices.Dispose();
             chunkVertices.Dispose();
             chunkTriangles.Dispose();
-            borderTriangles.Dispose();
-            borderVertices.Dispose();
+            // borderTriangles.Dispose();
+            // borderVertices.Dispose();
         }
 
-        private void CalculateNormals(NativeArray<float3> vertices, NativeArray<float3> borderVertices, NativeArray<int> borderTriangles, NativeArray<int> triangles, NativeArray<float3> normals)
+        private void CalculateNormals(NativeArray<float3> vertices, NativeArray<float3> normals)
         {
             // Loop through chunk triangles
             for (int i = 0; i < vertices.Length; i++)
@@ -748,6 +647,8 @@ public class TerrainChunk : MonoBehaviour
             
             // Debug.Log($"xyz: {xyz} xyz0: {xyz0}, xyz1: {xyz1} c001: {to1D(xyz0.x, xyz0.y, xyz1.z)}, c101: {to1D(to1D(xyz1.x, xyz0.y, xyz1.z))} \r\n" +
             //           $"({xyz0.x}+1) + {xyz0.y}*{MapDataGenerator.supportedChunkSize} + ({xyz1.z}+1)*{MapDataGenerator.supportedChunkSize}*{chunkHeight};");
+            
+            // Trilinear interpolation
             float c00 = map[to1D(xyz0)] * (1 - xd) + map[to1D(xyz1.x, xyz0.y, xyz0.z)] * xd;
             float c01 = map[to1D(xyz0.x, xyz0.y, xyz1.z)] * (1 - xd) + map[to1D(xyz1.x, xyz0.y, xyz1.z)] * xd;
             float c10 = map[to1D(xyz0.x, xyz1.y, xyz0.z)] * (1 - xd) + map[to1D(xyz1.x, xyz1.y, xyz0.z)] * xd;
