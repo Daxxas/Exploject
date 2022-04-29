@@ -50,7 +50,7 @@ MonoBehaviour:
   mf: {fileID: 69066253686182055}
   mr: {fileID: 1308533477727558568}
   mc: {fileID: 4134958947427449766}
-  meshMaterial: {fileID: 2100000, guid: aea5e67c9b447254383c4b4b8f5604ca, type: 2}
+  meshMaterial: {fileID: 2100000, guid: 027cb3d3d7dc79d41ad763e01759de07, type: 2}
 --- !u!33 &69066253686182055
 MeshFilter:
   m_ObjectHideFlags: 0

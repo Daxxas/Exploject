@@ -37,10 +37,10 @@ public class EndlessTerrain : MonoBehaviour
 
     private void UpdateVisibleChunks()
     {
-        foreach (var terrainChunk in terrainChunksVisibleLastUpdate)
-        {
-            terrainChunk.SetVisible(false);
-        }
+        // foreach (var terrainChunk in terrainChunksVisibleLastUpdate)
+        // {
+        //     terrainChunk.SetVisible(false);
+        // }
         terrainChunksVisibleLastUpdate.Clear();
 
         int currentChunkCoordX = Mathf.RoundToInt(viewerPosition.x / chunkSize);

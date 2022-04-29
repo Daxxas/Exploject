@@ -1,9 +1,11 @@
 using System;
 using System.Collections;
 using DefaultNamespace;
+using TMPro;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
+using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -39,7 +41,7 @@ public class TerrainChunk : MonoBehaviour
 
         var mapDataHandle = mapDataGenerator.GenerateMapData(position, generatedMap);
 
-        GenerateChunkMesh(generatedMap, MapDataGenerator.chunkSize, MapDataGenerator.chunkHeight, MapDataGenerator.threshold, mapDataHandle);
+        GenerateChunkMesh(generatedMap,  mapDataGenerator.supportedChunkSize, MapDataGenerator.chunkSize, MapDataGenerator.chunkHeight, MapDataGenerator.threshold, mapDataHandle);
 
         return this;
     }
@@ -48,7 +50,7 @@ public class TerrainChunk : MonoBehaviour
     {
         float viewerDistanceFromNearEdge = Mathf.Sqrt(bounds.SqrDistance(viewerPosition));
         bool visible = viewerDistanceFromNearEdge <= maxViewDst;
-        SetVisible(visible);
+        // SetVisible(visible);
     }
 
     public void SetVisible(bool visible)
@@ -81,17 +83,17 @@ public class TerrainChunk : MonoBehaviour
     private NativeHashMap<int3, float3> vertices;
     private Mesh.MeshDataArray meshDataArray;
     
-    public JobHandle GenerateChunkMesh(NativeArray<float> generatedMap, int chunkSize, int chunkHeight, float threshold, JobHandle mapDataHandle)
+    public JobHandle GenerateChunkMesh(NativeArray<float> generatedMap, int supportedChunkSize, int chunkSize, int chunkHeight, float threshold, JobHandle mapDataHandle)
     {
-        int supportedChunkSize = chunkSize + 3;
         triangles = new NativeQueue<Triangle>(Allocator.Persistent);
         vertices = new NativeHashMap<int3, float3>((chunkHeight * supportedChunkSize * supportedChunkSize), Allocator.Persistent);
 
         
         // Generate mesh object with its components
         bounds = new Bounds(new Vector3(chunkSize / 2, chunkHeight / 2, chunkSize / 2), new Vector3(chunkSize, chunkHeight, chunkSize));
-        // gameObject.AddComponent<BoundGizmo>();
-        
+        var bgizmos =  gameObject.AddComponent<BoundGizmo>();
+        bgizmos.displayGizmos = true;
+            
         Mesh mesh = new Mesh()
         {
             bounds = bounds
@@ -115,6 +117,7 @@ public class TerrainChunk : MonoBehaviour
             // Arrays to fill with this job
             triangles = triangles.AsParallelWriter(),
             vertices = vertices.AsParallelWriter(),
+            supportedChunkSize = supportedChunkSize,
             chunkSize = chunkSize,
             chunkHeight = chunkHeight,
             threshold = threshold
@@ -125,19 +128,34 @@ public class TerrainChunk : MonoBehaviour
         // Generate Mesh from Marching cube result
         var chunkMeshJob = new ChunkMeshJob()
         {
+            map = generatedMap,
             triangles = triangles,
             uniqueVertices = vertices,
             bounds = bounds,
             meshDataArray = meshDataArray,
             chunkHeight = chunkHeight,
+            supportedChunkSize = supportedChunkSize,
             chunkSize = chunkSize
         };
 
-        var chunkMeshHandle = chunkMeshJob.Schedule(marchHandle);
-        
-        StartCoroutine(ApplyMeshData(meshDataArray, mesh, mc, vertices, triangles, generatedMap, chunkMeshHandle));
-        
-        return chunkMeshHandle;
+        bool debug = true;
+        if (!debug)
+        {
+            // var chunkMeshHandle = chunkMeshJob.Schedule(marchHandle);
+            //
+            // StartCoroutine(ApplyMeshData(meshDataArray, mesh, mc, vertices, triangles, generatedMap, chunkMeshHandle));
+            //
+            // return chunkMeshHandle;
+
+        }
+        else
+        {
+            StartCoroutine(DebugApplyMeshData(meshDataArray, mesh, mc, vertices, triangles, generatedMap, chunkMeshJob, marchHandle));
+
+            return marchHandle;
+        }
+
+        return new JobHandle();
     }
     
     private IEnumerator ApplyMeshData(Mesh.MeshDataArray meshDataArray, Mesh mesh, MeshCollider mc, NativeHashMap<int3, float3> vertices, NativeQueue<Triangle> triangles, NativeArray<float> map, JobHandle job)
@@ -146,15 +164,68 @@ public class TerrainChunk : MonoBehaviour
         job.Complete();
         isInit = true;
 
-        // DebugChunks(vertices, pos);
+        DebugChunks(vertices);
         
         Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh);
-
+        
         mesh.RecalculateTangents();
         mc.sharedMesh = mesh;
         triangles.Dispose();
         vertices.Dispose();
         map.Dispose();
+    }
+    
+    private IEnumerator DebugApplyMeshData(Mesh.MeshDataArray meshDataArray, Mesh mesh, MeshCollider mc, NativeHashMap<int3, float3> vertices, NativeQueue<Triangle> triangles, NativeArray<float> map, ChunkMeshJob meshJob, JobHandle job)
+    {
+        yield return new WaitUntil(() => job.IsCompleted);
+        job.Complete();
+        
+        meshJob.Execute();
+        
+        isInit = true;
+
+        DebugChunks(vertices);
+        
+        Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh);
+        
+        mesh.RecalculateTangents();
+        mc.sharedMesh = mesh;
+        triangles.Dispose();
+        vertices.Dispose();
+        map.Dispose();
+    }
+
+
+    
+    // Call to visualize vertices positions
+    public void DebugChunks(NativeHashMap<int3, float3> vertices)
+    {
+        Vector2 offset = Vector2.zero;
+
+        var g = new GameObject("Info of " + offset.x + " " + offset.y);
+        
+        var vertexKeyValues = vertices.GetKeyValueArrays(Allocator.Persistent);
+        var vertex = vertexKeyValues.Values;
+        var vertexIndex = vertexKeyValues.Keys;
+        
+        for (int i = 0; i < vertexIndex.Length; i++)
+        {
+        
+            // var tmp = new GameObject();
+            // var tmpc = tmp.AddComponent<TextMeshPro>();
+            // tmpc.text = vertexIndex.ToString();
+            // tmpc.fontSize = 0.5f;
+            // tmpc.alignment = TextAlignmentOptions.Midline;
+            
+            var c = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            c.transform.position = new Vector3(vertex[i].x + offset.x, vertex[i].y, offset.y + vertex[i].z);
+            c.transform.localScale = new Vector3(0.25f, 0.25f, 0.25f);
+            c.transform.parent = g.transform;
+            // tmp.transform.parent = c.transform;
+            // tmp.transform.localPosition = new Vector3(0, 0.5f, 0);
+        }
+
+        vertexKeyValues.Dispose();
     }
 
     private void OnDestroy()
@@ -174,7 +245,7 @@ public class TerrainChunk : MonoBehaviour
 
 
     // Second job to be called from CreateChunk after map data is generated
-    [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
+    // [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
     public struct MarchCubeJob : IJobParallelFor
     {
         [Unity.Collections.ReadOnly]
@@ -191,9 +262,9 @@ public class TerrainChunk : MonoBehaviour
         public NativeHashMap<int3, float3>.ParallelWriter vertices;
 
         public int chunkSize;
+        public int supportedChunkSize;
         public int chunkHeight;
         public float threshold;
-        private int supportedChunkSize => chunkSize + 3;
         
         // job is IJobParallelFor, one index = 1 cube tested
         public void Execute(int idx)
@@ -210,11 +281,13 @@ public class TerrainChunk : MonoBehaviour
             int z = idx / (supportedChunkSize * chunkHeight);
 
             // Don't calculate when we are too close to the edge of the chunk to prevent out of bound
-            if (x >= supportedChunkSize-1 || y >= chunkHeight-1 || z >= supportedChunkSize-1)
+            if (x <= 0 || y <= 0 || z <= 0 ||  x >= supportedChunkSize-2 || y >= chunkHeight-2 || z >= supportedChunkSize-2)
             {
                 return;
             }
-
+            
+            
+            Debug.Log($"x: {x}, y: {y}, z: {z}");
             // put march cube in array to have cleaner code after
             #region March cube definition 
             marchCube[0] = new MapDataGenerator.CubePoint()
@@ -360,10 +433,11 @@ public class TerrainChunk : MonoBehaviour
     }
 
     // Third & last job called from CreateChunk, generate mesh for marching cube data
-    [BurstCompile(FloatPrecision.High, FloatMode.Fast,CompileSynchronously = true)]
-    public struct ChunkMeshJob : IJob
+    // [BurstCompile(FloatPrecision.High, FloatMode.Fast,CompileSynchronously = true)]
+    public struct ChunkMeshJob // IJob
     {
         // Input reference
+        public NativeArray<float> map;
         public NativeQueue<Triangle> triangles;
         public NativeHashMap<int3, float3> uniqueVertices;
         public Bounds bounds;
@@ -371,6 +445,7 @@ public class TerrainChunk : MonoBehaviour
         public Mesh.MeshDataArray meshDataArray;
 
         public int chunkSize;
+        public int supportedChunkSize;
         public int chunkHeight;
         
         public void Execute()
@@ -615,6 +690,7 @@ public class TerrainChunk : MonoBehaviour
                 bounds = bounds,
                 vertexCount = chunkVertices.Length
             }, MeshUpdateFlags.DontRecalculateBounds);
+
             
             /////////////////////////////////
             matchingIndices.Dispose();
@@ -627,64 +703,172 @@ public class TerrainChunk : MonoBehaviour
         private void CalculateNormals(NativeArray<float3> vertices, NativeArray<float3> borderVertices, NativeArray<int> borderTriangles, NativeArray<int> triangles, NativeArray<float3> normals)
         {
             // Loop through border triangles
-            for (int i = 0; i < borderTriangles.Length / 3; i++)
-            {
-                int normalTriangleIndex = i * 3;
-                int vertexIndexA = borderTriangles[normalTriangleIndex];
-                int vertexIndexB = borderTriangles[normalTriangleIndex+1];
-                int vertexIndexC = borderTriangles[normalTriangleIndex+2];
-                
-                float3 triangleNormal = SurfaceNormal(vertexIndexA, vertexIndexB, vertexIndexC, vertices, borderVertices);
-                
-                // Only update vertex in the triangle that are in the chunk mesh
-                if (vertexIndexA >= 0)
-                {
-                    normals[vertexIndexA] += triangleNormal;
-                }
-                if (vertexIndexB >= 0)
-                {
-                    normals[vertexIndexB] += triangleNormal;
-                }
-                if (vertexIndexC >= 0)
-                {
-                    normals[vertexIndexC] += triangleNormal;
-                }
-            }
+            // for (int i = 0; i < borderTriangles.Length / 3; i++)
+            // {
+            //     int normalTriangleIndex = i * 3;
+            //     int vertexIndexA = borderTriangles[normalTriangleIndex];
+            //     int vertexIndexB = borderTriangles[normalTriangleIndex+1];
+            //     int vertexIndexC = borderTriangles[normalTriangleIndex+2];
+            //     
+            //     float3 triangleNormal = SurfaceNormal(vertexIndexA, vertexIndexB, vertexIndexC, vertices, borderVertices);
+            //     
+            //     // Only update vertex in the triangle that are in the chunk mesh
+            //     if (vertexIndexA >= 0)
+            //     {
+            //         normals[vertexIndexA] += triangleNormal;
+            //     }
+            //     if (vertexIndexB >= 0)
+            //     {
+            //         normals[vertexIndexB] += triangleNormal;
+            //     }
+            //     if (vertexIndexC >= 0)
+            //     {
+            //         normals[vertexIndexC] += triangleNormal;
+            //     }
+            // }
             
             // Loop through chunk triangles
-            for (int i = 0; i < triangles.Length  / 3; i++)
-            {
-                int normalTriangleIndex = i * 3;
-                int vertexIndexA = triangles[normalTriangleIndex];
-                int vertexIndexB = triangles[normalTriangleIndex+1];
-                int vertexIndexC = triangles[normalTriangleIndex+2];
-
-                float3 triangleNormal = SurfaceNormal(vertexIndexA, vertexIndexB, vertexIndexC, vertices, borderVertices);
-                // normals are set to 0 beforehand to avoid unpredictable issues
-                normals[vertexIndexA] += triangleNormal;
-                normals[vertexIndexB] += triangleNormal;
-                normals[vertexIndexC] += triangleNormal;
-            }
             
-            for (int i = 0; i < normals.Length; i++)
+            // PreviewMapData();
+
+            for (int i = 0; i < vertices.Length; i++)
             {
-                math.normalize(normals[i]);
+                // float3 triangleNormal = SurfaceNormal(i, vertices);
+                // normals[i] = math.normalize(triangleNormal);
             }
         }
 
-        float3 SurfaceNormal(int indexA, int indexB, int indexC, NativeArray<float3> vertices, NativeArray<float3> borderVertices)
+        float3 SurfaceNormal(int pointIndex, NativeArray<float3> vertices)
         {
-            // Get vertex from the right vertices array based on the index in the triangle
-            // This is the reason why we have negative indices in the triangle array for the border
-            float3 pointA = (indexA < 0) ? borderVertices[-indexA-1] : vertices[indexA];
-            float3 pointB = (indexB < 0) ? borderVertices[-indexB-1] : vertices[indexB];
-            float3 pointC = (indexC < 0) ? borderVertices[-indexC-1] : vertices[indexC];
+            float3 returnNormal = float3.zero;
+            float3 currentVert = vertices[pointIndex];
+            var parent = new GameObject(currentVert.ToString());
             
-            float3 sideAB = pointB - pointA;
-            float3 sideAC = pointC - pointA;
-            return math.cross(sideAB, sideAC);
+            for (int x = -1; x < 2; x++)
+            {
+                for (int y = -1; y < 2; y++)
+                {
+                    for (int z = -1; z < 2; z++)
+                    {
+                        if (!(x == 0 && y == 0 && z == 0))
+                        {
+                            float3 offsetValuePos = new float3(currentVert.x + x, currentVert.y + y, currentVert.z + z);
+                            float3 gradientVec = currentVert - offsetValuePos;
+                            
+                            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            float valueAtOffsetPos = GetInterpolatedValue(offsetValuePos, go.transform);
+                            
+                            if (valueAtOffsetPos >= 0)
+                            {
+                                go.transform.parent = parent.transform;
+                                go.transform.position = offsetValuePos;
+                                go.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+                                var np = go.AddComponent<NormalPreview>();
+                                np.normal = math.normalize(gradientVec * valueAtOffsetPos);
+                                np.valueAtThisPos = valueAtOffsetPos;
+                                returnNormal += math.normalize(gradientVec * valueAtOffsetPos);
+                            }
+                            else
+                            {
+                                Destroy(go);
+                            }
+                            
+                            Debug.Log($"For value {currentVert}, testing {offsetValuePos}, gradient is {gradientVec}, final math is : {math.normalize(gradientVec * valueAtOffsetPos)}");
+                        }
+                    }
+                }
+            }
+
+            return returnNormal;
         }
 
+        private float GetInterpolatedValue(float3 xyz, Transform parent)
+        {
+            int3 xyz0 = (int3) math.floor(xyz);
+            int3 xyz1 = xyz0 + 1;
+
+            for (int i = 0; i < 2; i++)
+            {
+                for (int j = 0; j < 2; j++)
+                {
+                    for (int k = 0; k < 2; k++)
+                    {
+                        var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                        go.transform.localScale = new Vector3(0.05f, 0.05f, 0.05f);
+                        Vector3 finalPos = Vector3.zero;
+                        if (i == 0)
+                            finalPos.x = xyz0.x;
+                        else
+                            finalPos.x = xyz1.x;
+            
+                        if (j == 0)
+                            finalPos.y = xyz0.y;
+                        else
+                            finalPos.y = xyz1.y;
+            
+                        if (k == 0)
+                            finalPos.z = xyz0.z;
+                        else
+                            finalPos.z = xyz1.z;
+                        
+                        // go.transform.parent = parent;
+                        go.transform.position = finalPos;
+                        // go.AddComponent<NormalPreview>().valueAtThisPos = map[to1D((int) finalPos.x, (int) finalPos.y, (int) finalPos.z)];
+            
+                    }
+                }
+            }
+            
+            float xd = (xyz.x - xyz0.x) / (xyz1.x - xyz0.x);
+            float yd = (xyz.y - xyz0.y) / (xyz1.y - xyz0.y);
+            float zd = (xyz.z - xyz0.z) / (xyz1.z - xyz0.z);
+
+            
+            Debug.Log($"xyz: {xyz} xyz0: {xyz0}, xyz1: {xyz1} c001: {to1D(xyz0.x, xyz0.y, xyz1.z)}, c101: {to1D(to1D(xyz1.x, xyz0.y, xyz1.z))} \r\n" +
+                      $"({xyz0.x}+1) + {xyz0.y}*{supportedChunkSize} + ({xyz1.z}+1)*{supportedChunkSize}*{chunkHeight};");
+            // float c00 = map[to1D(xyz0)] * (1 - xd) + map[to1D(xyz1.x, xyz0.y, xyz0.z)] * xd;
+            // float c01 = map[to1D(xyz0.x, xyz0.y, xyz1.z)] * (1 - xd) + map[to1D(xyz1.x, xyz0.y, xyz1.z)] * xd;
+            // float c10 = map[to1D(xyz0.x, xyz1.y, xyz0.z)] * (1 - xd) + map[to1D(xyz1.x, xyz1.y, xyz0.z)] * xd;
+            // float c11 = map[to1D(xyz0.x, xyz1.y, xyz1.z)] * (1 - xd) + map[to1D(xyz1)] * xd;
+            //
+            // float c0 = c00 * (1 - yd) + c10 * yd;
+            // float c1 = c01 * (1 - yd) + c11 * yd;
+            //
+            // float c = c0 * (1 - zd) + c1 * zd;
+            
+            // return c;
+            return 0;
+
+        }
+        
+
+        private void PreviewMapData()
+        {
+            for (int x = 0; x < chunkSize; x++)
+            {
+                for (int y = 0; y < chunkHeight; y++)
+                {
+                    for (int z = 0; z < chunkSize; z++)
+                    {
+                        var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                        go.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
+                        go.transform.position = new Vector3(x, y, z);
+                        go.name = map[to1D(x, y, z)].ToString();
+                    }
+                }
+            }
+        }
+        
+        public int to1D( int x, int y, int z)
+        {
+            return x + y*supportedChunkSize + z*supportedChunkSize*chunkHeight;
+        }
+        
+        public int to1D(int3 xyz)
+        {
+            return to1D(xyz.x, xyz.y, xyz.z);
+        }
+        
         private void SetBasicUVs(NativeArray<float3> vertices, NativeArray<float2> uvs)
         {
             for (int i = 0; i < vertices.Length; i++)

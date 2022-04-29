@@ -20,10 +20,10 @@ public class MapDataGenerator : MonoBehaviour
 {
     public int seed;
     
-    [ShowInInspector] public const int chunkSize = 16;
-    [ShowInInspector] public const int chunkHeight = 128;
+    [ShowInInspector] public const int chunkSize = 6;
+    [ShowInInspector] public const int chunkHeight = 96;
     [ShowInInspector] public const float threshold = 0;
-    public static int supportedChunkSize => chunkSize + 3; 
+    public int supportedChunkSize => chunkSize + 5; 
     
     // Chunk representation 
     // 0   1   2   3   4   5   6   7   8   9  10  12  13  14  15  16  17  18
@@ -110,42 +110,9 @@ public class MapDataGenerator : MonoBehaviour
         };
         
         JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 4);
+
         
         return mapDataHandle;
-    }
-    
-    // Call to visualize vertices positions
-    public void DebugChunks(NativeHashMap<int3, float3> vertices,Vector2 offset)
-    {
-        var g = new GameObject("Info of " + offset.x + " " + offset.y);
-        
-        var vertexKeyValues = vertices.GetKeyValueArrays(Allocator.Persistent);
-        var vertex = vertexKeyValues.Values;
-        var vertexIndex = vertexKeyValues.Keys;
-        
-        for (int i = 0; i < vertexIndex.Length; i++)
-        {
-        
-            var tmp = new GameObject();
-            var tmpc = tmp.AddComponent<TextMeshPro>();
-            tmpc.text = vertexIndex.ToString();
-            tmpc.fontSize = 0.5f;
-            tmpc.alignment = TextAlignmentOptions.Midline;
-            
-            var c = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            c.transform.position = new Vector3(vertex[i].x + offset.x, vertex[i].y, offset.y + vertex[i].z);
-            c.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
-            c.transform.parent = g.transform;
-            tmp.transform.parent = c.transform;
-            tmp.transform.localPosition = new Vector3(0, 0.5f, 0);
-        }
-
-        vertexKeyValues.Dispose();
-    }
-    
-    public static int to1D(int3 xyz)
-    {
-        return xyz.x + xyz.y*supportedChunkSize + xyz.z*supportedChunkSize*chunkHeight;
     }
 }
 
