@@ -130,23 +130,24 @@ public class TerrainChunk : MonoBehaviour
             uniqueVertices = vertices,
             bounds = bounds,
             meshDataArray = meshDataArray,
+            map = generatedMap,
             chunkHeight = chunkHeight,
             chunkSize = chunkSize
         };
 
         var chunkMeshHandle = chunkMeshJob.Schedule(marchHandle);
         
-        StartCoroutine(ApplyMeshData(meshDataArray, mesh, mc, vertices, triangles, generatedMap, chunkMeshHandle));
+        StartCoroutine(ApplyMeshData(meshDataArray, mesh, mc, vertices, triangles, generatedMap, chunkMeshHandle, chunkMeshJob));
         
-        return chunkMeshHandle;
+        return new JobHandle();
     }
     
-    private IEnumerator ApplyMeshData(Mesh.MeshDataArray meshDataArray, Mesh mesh, MeshCollider mc, NativeHashMap<int3, float3> vertices, NativeQueue<Triangle> triangles, NativeArray<float> map, JobHandle job)
+    private IEnumerator ApplyMeshData(Mesh.MeshDataArray meshDataArray, Mesh mesh, MeshCollider mc, NativeHashMap<int3, float3> vertices, NativeQueue<Triangle> triangles, NativeArray<float> map, JobHandle job, ChunkMeshJob chunkMeshJob)
     {
         yield return new WaitUntil(() => job.IsCompleted);
         job.Complete();
         isInit = true;
-
+        // chunkMeshJob.Execute();
         // DebugChunks(vertices, pos);
         // DebugData(map);
         
@@ -194,7 +195,7 @@ public class TerrainChunk : MonoBehaviour
 
 
     // Second job to be called from CreateChunk after map data is generated
-    // [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
+    [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
     public struct MarchCubeJob : IJobParallelFor
     {
         [Unity.Collections.ReadOnly]
@@ -315,9 +316,9 @@ public class TerrainChunk : MonoBehaviour
 
                 // offset every vert by -3 for some reason idk, otherwise the chunk isn't really in the middle of its supposed bounds
                 // probably because of supportedChunksize offset
-                vert0.xz -= 3;
-                vert1.xz -= 3;
-                vert2.xz -= 3;
+                vert0.xz -= 1;
+                vert1.xz -= 1;
+                vert2.xz -= 1;
                 
                 // round vert position for hashmap index
                 // this is to avoid having 2 vertices really close to produce smooth terrain
@@ -388,12 +389,13 @@ public class TerrainChunk : MonoBehaviour
         public NativeQueue<Triangle> triangles;
         public NativeHashMap<int3, float3> uniqueVertices;
         public Bounds bounds;
+        public NativeArray<float> map;
         // Output
         public Mesh.MeshDataArray meshDataArray;
 
         public int chunkSize;
         public int chunkHeight;
-        
+
         public void Execute()
         {
             // Initialize meshData
@@ -647,65 +649,130 @@ public class TerrainChunk : MonoBehaviour
 
         private void CalculateNormals(NativeArray<float3> vertices, NativeArray<float3> borderVertices, NativeArray<int> borderTriangles, NativeArray<int> triangles, NativeArray<float3> normals)
         {
-            // Loop through border triangles
-            for (int i = 0; i < borderTriangles.Length / 3; i++)
-            {
-                int normalTriangleIndex = i * 3;
-                int vertexIndexA = borderTriangles[normalTriangleIndex];
-                int vertexIndexB = borderTriangles[normalTriangleIndex+1];
-                int vertexIndexC = borderTriangles[normalTriangleIndex+2];
-                
-                float3 triangleNormal = SurfaceNormal(vertexIndexA, vertexIndexB, vertexIndexC, vertices, borderVertices);
-                
-                // Only update vertex in the triangle that are in the chunk mesh
-                if (vertexIndexA >= 0)
-                {
-                    normals[vertexIndexA] += triangleNormal;
-                }
-                if (vertexIndexB >= 0)
-                {
-                    normals[vertexIndexB] += triangleNormal;
-                }
-                if (vertexIndexC >= 0)
-                {
-                    normals[vertexIndexC] += triangleNormal;
-                }
-            }
-            
             // Loop through chunk triangles
-            for (int i = 0; i < triangles.Length  / 3; i++)
+            for (int i = 0; i < vertices.Length; i++)
             {
-                int normalTriangleIndex = i * 3;
-                int vertexIndexA = triangles[normalTriangleIndex];
-                int vertexIndexB = triangles[normalTriangleIndex+1];
-                int vertexIndexC = triangles[normalTriangleIndex+2];
-
-                float3 triangleNormal = SurfaceNormal(vertexIndexA, vertexIndexB, vertexIndexC, vertices, borderVertices);
-                // normals are set to 0 beforehand to avoid unpredictable issues
-                normals[vertexIndexA] += triangleNormal;
-                normals[vertexIndexB] += triangleNormal;
-                normals[vertexIndexC] += triangleNormal;
-            }
-            
-            for (int i = 0; i < normals.Length; i++)
-            {
-                math.normalize(normals[i]);
+                float3 normal = SurfaceNormal(i, vertices);
+                normals[i] = normal;
             }
         }
 
-        float3 SurfaceNormal(int indexA, int indexB, int indexC, NativeArray<float3> vertices, NativeArray<float3> borderVertices)
+        float3 SurfaceNormal(int pointIndex, NativeArray<float3> vertices)
         {
-            // Get vertex from the right vertices array based on the index in the triangle
-            // This is the reason why we have negative indices in the triangle array for the border
-            float3 pointA = (indexA < 0) ? borderVertices[-indexA-1] : vertices[indexA];
-            float3 pointB = (indexB < 0) ? borderVertices[-indexB-1] : vertices[indexB];
-            float3 pointC = (indexC < 0) ? borderVertices[-indexC-1] : vertices[indexC];
+            float3 returnNormal = float3.zero;
+            float3 currentVert = vertices[pointIndex];
+            // var parent = new GameObject(currentVert.ToString());
             
-            float3 sideAB = pointB - pointA;
-            float3 sideAC = pointC - pointA;
-            return math.cross(sideAB, sideAC);
+            for (int x = -1; x < 2; x++)
+            {
+                for (int y = -1; y < 2; y++)
+                {
+                    for (int z = -1; z < 2; z++)
+                    {
+                        if (!(x == 0 && y == 0 && z == 0))
+                        {
+                            float3 offsetValuePos = new float3(currentVert.x + x, currentVert.y + y, currentVert.z + z);
+                            float3 gradientVec = currentVert - offsetValuePos;
+                            
+                            float valueAtOffsetPos = GetInterpolatedValue(offsetValuePos);
+                            // var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            // go.transform.parent = parent.transform;
+                            // go.transform.position = offsetValuePos;
+                            // go.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+                            
+                            if (valueAtOffsetPos >= 0)
+                            {
+                                // var np = go.AddComponent<NormalPreview>();
+                                // np.normal = math.normalize(gradientVec * valueAtOffsetPos);
+                                // np.valueAtThisPos = valueAtOffsetPos;
+                                returnNormal += math.normalize(gradientVec * valueAtOffsetPos);
+                            }
+                            else
+                            {
+                                // Destroy(go);
+                            }
+                            
+                            // Debug.Log($"For value {currentVert}, testing {offsetValuePos}, gradient is {gradientVec}, final math is : {math.normalize(gradientVec * valueAtOffsetPos)}");
+                        }
+                    }
+                }
+            }
+
+            return returnNormal;
         }
 
+        private float GetInterpolatedValue(float3 xyz)
+        {
+            int3 xyz0 = ((int3) math.floor(xyz));
+            int3 xyz1 = xyz0 + 1;
+
+            // for (int i = 0; i < 2; i++)
+            // {
+            //     for (int j = 0; j < 2; j++)
+            //     {
+            //         for (int k = 0; k < 2; k++)
+            //         {
+            //             var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            //             go.transform.localScale = new Vector3(0.05f, 0.05f, 0.05f);
+            //             Vector3 finalPos = Vector3.zero;
+            //             if (i == 0)
+            //                 finalPos.x = xyz0.x;
+            //             else
+            //                 finalPos.x = xyz1.x;
+            //
+            //             if (j == 0)
+            //                 finalPos.y = xyz0.y;
+            //             else
+            //                 finalPos.y = xyz1.y;
+            //
+            //             if (k == 0)
+            //                 finalPos.z = xyz0.z;
+            //             else
+            //                 finalPos.z = xyz1.z;
+            //             
+            //             go.transform.parent = parent;
+            //             go.transform.position = finalPos;
+            //             go.name = map[to1D((int3) new float3(finalPos.x, finalPos.y, finalPos.z))].ToString();
+            //             finalPos.x++;
+            //             finalPos.z++;
+            //             // go.AddComponent<NormalPreview>().valueAtThisPos = map[to1D((int) finalPos.x, (int) finalPos.y, (int) finalPos.z)];
+            //
+            //         }
+            //     }
+            // }
+            
+            float xd = (xyz.x - xyz0.x) / (xyz1.x - xyz0.x);
+            float yd = (xyz.y - xyz0.y) / (xyz1.y - xyz0.y);
+            float zd = (xyz.z - xyz0.z) / (xyz1.z - xyz0.z);
+
+            
+            // Debug.Log($"xyz: {xyz} xyz0: {xyz0}, xyz1: {xyz1} c001: {to1D(xyz0.x, xyz0.y, xyz1.z)}, c101: {to1D(to1D(xyz1.x, xyz0.y, xyz1.z))} \r\n" +
+            //           $"({xyz0.x}+1) + {xyz0.y}*{MapDataGenerator.supportedChunkSize} + ({xyz1.z}+1)*{MapDataGenerator.supportedChunkSize}*{chunkHeight};");
+            float c00 = map[to1D(xyz0)] * (1 - xd) + map[to1D(xyz1.x, xyz0.y, xyz0.z)] * xd;
+            float c01 = map[to1D(xyz0.x, xyz0.y, xyz1.z)] * (1 - xd) + map[to1D(xyz1.x, xyz0.y, xyz1.z)] * xd;
+            float c10 = map[to1D(xyz0.x, xyz1.y, xyz0.z)] * (1 - xd) + map[to1D(xyz1.x, xyz1.y, xyz0.z)] * xd;
+            float c11 = map[to1D(xyz0.x, xyz1.y, xyz1.z)] * (1 - xd) + map[to1D(xyz1)] * xd;
+            
+            float c0 = c00 * (1 - yd) + c10 * yd;
+            float c1 = c01 * (1 - yd) + c11 * yd;
+            
+            float c = c0 * (1 - zd) + c1 * zd;
+            
+            return c;
+
+        }
+
+        
+        public int to1D( int x, int y, int z)
+        {
+            return (x+1) + y*MapDataGenerator.supportedChunkSize + (z+1)*MapDataGenerator.supportedChunkSize*chunkHeight;
+        }
+
+        public int to1D(int3 xyz)
+        {
+            return to1D(xyz.x, xyz.y, xyz.z);
+        }
+        
         private void SetBasicUVs(NativeArray<float3> vertices, NativeArray<float2> uvs)
         {
             for (int i = 0; i < vertices.Length; i++)
