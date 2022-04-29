@@ -20,10 +20,11 @@ public class MapDataGenerator : MonoBehaviour
 {
     public int seed;
     
-    [ShowInInspector] public const int chunkSize = 16;
+    [ShowInInspector] public const int chunkSize = 4;
     [ShowInInspector] public const int chunkHeight = 128;
     [ShowInInspector] public const float threshold = 0;
-    public static int supportedChunkSize => chunkSize + 3; 
+    public const int chunkBorderIncrease = 5;
+    public static int supportedChunkSize => chunkSize + chunkBorderIncrease;
     
     // Chunk representation 
     // 0   1   2   3   4   5   6   7   8   9  10  12  13  14  15  16  17  18

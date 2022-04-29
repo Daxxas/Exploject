@@ -35,11 +35,11 @@ public class TerrainChunk : MonoBehaviour
         // SetVisible(false);
 
         // Variables that will be filled & passed along jobs
-        NativeArray<float> generatedMap = new NativeArray<float>(MapDataGenerator.chunkHeight * (MapDataGenerator.chunkSize + 3) * (MapDataGenerator.chunkSize + 3), Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        NativeArray<float> generatedMap = new NativeArray<float>(MapDataGenerator.chunkHeight * (MapDataGenerator.supportedChunkSize) * (MapDataGenerator.supportedChunkSize), Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
         var mapDataHandle = mapDataGenerator.GenerateMapData(position, generatedMap);
 
-        GenerateChunkMesh(generatedMap, MapDataGenerator.chunkSize, MapDataGenerator.chunkHeight, MapDataGenerator.threshold, mapDataHandle);
+        GenerateChunkMesh(generatedMap, MapDataGenerator.chunkSize, MapDataGenerator.chunkBorderIncrease, MapDataGenerator.chunkHeight, MapDataGenerator.threshold, mapDataHandle);
 
         return this;
     }
@@ -81,9 +81,9 @@ public class TerrainChunk : MonoBehaviour
     private NativeHashMap<int3, float3> vertices;
     private Mesh.MeshDataArray meshDataArray;
     
-    public JobHandle GenerateChunkMesh(NativeArray<float> generatedMap, int chunkSize, int chunkHeight, float threshold, JobHandle mapDataHandle)
+    public JobHandle GenerateChunkMesh(NativeArray<float> generatedMap, int chunkSize, int chunkBorderIncrease, int chunkHeight, float threshold, JobHandle mapDataHandle)
     {
-        int supportedChunkSize = chunkSize + 3;
+        int supportedChunkSize = chunkSize + chunkBorderIncrease;
         triangles = new NativeQueue<Triangle>(Allocator.Persistent);
         vertices = new NativeHashMap<int3, float3>((chunkHeight * supportedChunkSize * supportedChunkSize), Allocator.Persistent);
 
@@ -116,6 +116,7 @@ public class TerrainChunk : MonoBehaviour
             triangles = triangles.AsParallelWriter(),
             vertices = vertices.AsParallelWriter(),
             chunkSize = chunkSize,
+            chunkBorderIncrease = chunkBorderIncrease,
             chunkHeight = chunkHeight,
             threshold = threshold
         };
@@ -147,6 +148,7 @@ public class TerrainChunk : MonoBehaviour
         isInit = true;
 
         // DebugChunks(vertices, pos);
+        // DebugData(map);
         
         Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh);
 
@@ -155,6 +157,24 @@ public class TerrainChunk : MonoBehaviour
         triangles.Dispose();
         vertices.Dispose();
         map.Dispose();
+    }
+    
+    
+    public void DebugData(NativeArray<float> map)
+    {
+
+        for (int idx = 0; idx < map.Length; idx++)
+        {
+            int x = idx % MapDataGenerator.supportedChunkSize;
+            int y = (idx / MapDataGenerator.supportedChunkSize) % MapDataGenerator.chunkHeight;
+            int z = idx / (MapDataGenerator.supportedChunkSize * MapDataGenerator.chunkHeight);
+
+            var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+
+            sphere.transform.position = new Vector3(x-2, y, z-2);
+            sphere.transform.localScale = new Vector3(0.1f,0.1f,0.1f);
+            sphere.name = map[x + y * MapDataGenerator.supportedChunkSize + z * MapDataGenerator.supportedChunkSize * MapDataGenerator.chunkHeight].ToString();
+        }
     }
 
     private void OnDestroy()
@@ -174,7 +194,7 @@ public class TerrainChunk : MonoBehaviour
 
 
     // Second job to be called from CreateChunk after map data is generated
-    [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
+    // [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
     public struct MarchCubeJob : IJobParallelFor
     {
         [Unity.Collections.ReadOnly]
@@ -191,9 +211,10 @@ public class TerrainChunk : MonoBehaviour
         public NativeHashMap<int3, float3>.ParallelWriter vertices;
 
         public int chunkSize;
+        public int chunkBorderIncrease;
         public int chunkHeight;
         public float threshold;
-        private int supportedChunkSize => chunkSize + 3;
+        private int supportedChunkSize => chunkSize + chunkBorderIncrease;
         
         // job is IJobParallelFor, one index = 1 cube tested
         public void Execute(int idx)
@@ -210,11 +231,11 @@ public class TerrainChunk : MonoBehaviour
             int z = idx / (supportedChunkSize * chunkHeight);
 
             // Don't calculate when we are too close to the edge of the chunk to prevent out of bound
-            if (x >= supportedChunkSize-1 || y >= chunkHeight-1 || z >= supportedChunkSize-1)
+            if (x < 1 || y < 1 || z < 1 || x >= supportedChunkSize-2 || y >= chunkHeight-2 || z >= supportedChunkSize-2)
             {
                 return;
             }
-
+            
             // put march cube in array to have cleaner code after
             #region March cube definition 
             marchCube[0] = new MapDataGenerator.CubePoint()
@@ -292,11 +313,11 @@ public class TerrainChunk : MonoBehaviour
                 float3 vert1 = FindVertexPos(threshold, marchCube[a1].p, marchCube[b1].p, marchCube[a1].val, marchCube[b1].val);
                 float3 vert2 = FindVertexPos(threshold, marchCube[a2].p, marchCube[b2].p, marchCube[a2].val, marchCube[b2].val);
 
-                // offset every vert by -1 for some reason idk, otherwise the chunk isn't really in the middle of its supposed bounds
+                // offset every vert by -3 for some reason idk, otherwise the chunk isn't really in the middle of its supposed bounds
                 // probably because of supportedChunksize offset
-                vert0.xz--;
-                vert1.xz--;
-                vert2.xz--;
+                vert0.xz -= 3;
+                vert1.xz -= 3;
+                vert2.xz -= 3;
                 
                 // round vert position for hashmap index
                 // this is to avoid having 2 vertices really close to produce smooth terrain
