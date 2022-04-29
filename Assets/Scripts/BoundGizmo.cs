@@ -24,11 +24,11 @@ namespace DefaultNamespace
                 Gizmos.DrawWireSphere(mr.bounds.center, 1f);
                 Gizmos.DrawRay(mr.bounds.center, Vector3.up* 50 );
 
-                // for (int i = 0; i < mf.mesh.vertices.Length; i++)
-                // {
-                //     Gizmos.color = Color.cyan;
-                //     Gizmos.DrawRay(mf.mesh.vertices[i], mf.mesh.normals[i].normalized);
-                // }
+                for (int i = 0; i < mf.mesh.vertices.Length; i++)
+                {
+                    Gizmos.color = Color.cyan; 
+                    Gizmos.DrawRay(transform.position +  mf.mesh.vertices[i], mf.mesh.normals[i].normalized);
+                }
             }
         }
     }
