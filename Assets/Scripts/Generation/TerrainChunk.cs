@@ -48,7 +48,7 @@ public class TerrainChunk : MonoBehaviour
     {
         float viewerDistanceFromNearEdge = Mathf.Sqrt(bounds.SqrDistance(viewerPosition));
         bool visible = viewerDistanceFromNearEdge <= maxViewDst;
-        SetVisible(visible);
+        // SetVisible(visible);
     }
 
     public void SetVisible(bool visible)
@@ -77,6 +77,17 @@ public class TerrainChunk : MonoBehaviour
         return gameObject.activeSelf;
     }
 
+
+    [ContextMenu("Unity recalculate normal")]
+    public void DebugRecalculateNormals()
+    {
+        mf.mesh.RecalculateNormals();
+    }
+    
+    //////////////////////////////////////////////////////////////////
+    // Jobs
+    //////////////////////////////////////////////////////////////////
+    
     private NativeQueue<Triangle> triangles;
     private NativeHashMap<int3, float3> vertices;
     private Mesh.MeshDataArray meshDataArray;
@@ -147,6 +158,7 @@ public class TerrainChunk : MonoBehaviour
         yield return new WaitUntil(() => job.IsCompleted);
         job.Complete();
         isInit = true;
+        
         // chunkMeshJob.Execute();
         // DebugChunks(vertices, pos);
         // DebugData(map);
@@ -381,7 +393,7 @@ public class TerrainChunk : MonoBehaviour
     }
 
     // Third & last job called from CreateChunk, generate mesh for marching cube data
-    [BurstCompile(FloatPrecision.High, FloatMode.Fast,CompileSynchronously = true)]
+    // [BurstCompile(FloatPrecision.High, FloatMode.Fast,CompileSynchronously = true)]
     public struct ChunkMeshJob : IJob
     {
         // Input reference
@@ -552,7 +564,13 @@ public class TerrainChunk : MonoBehaviour
             for (int i = 0; i < vertices.Length; i++)
             {
                 float3 normal = SurfaceNormal(i, vertices);
-                normals[i] = normal;
+                normals[i] = math.normalize(normal);
+                // var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                // go.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+                // var np = go.AddComponent<NormalPreview>();
+                // np.normal = normals[i];
+                // np.normalColor = Color.blue;
+                // np.transform.position = vertices[i];
             }
         }
 
@@ -586,10 +604,10 @@ public class TerrainChunk : MonoBehaviour
                                 // np.valueAtThisPos = valueAtOffsetPos;
                                 returnNormal += math.normalize(gradientVec * valueAtOffsetPos);
                             }
-                            else
-                            {
-                                // Destroy(go);
-                            }
+                            // else
+                            // {
+                            //     // Destroy(go);
+                            // }
                             
                             // Debug.Log($"For value {currentVert}, testing {offsetValuePos}, gradient is {gradientVec}, final math is : {math.normalize(gradientVec * valueAtOffsetPos)}");
                         }
@@ -640,15 +658,11 @@ public class TerrainChunk : MonoBehaviour
             //     }
             // }
             
+            // Trilinear interpolation
             float xd = (xyz.x - xyz0.x) / (xyz1.x - xyz0.x);
             float yd = (xyz.y - xyz0.y) / (xyz1.y - xyz0.y);
             float zd = (xyz.z - xyz0.z) / (xyz1.z - xyz0.z);
 
-            
-            // Debug.Log($"xyz: {xyz} xyz0: {xyz0}, xyz1: {xyz1} c001: {to1D(xyz0.x, xyz0.y, xyz1.z)}, c101: {to1D(to1D(xyz1.x, xyz0.y, xyz1.z))} \r\n" +
-            //           $"({xyz0.x}+1) + {xyz0.y}*{MapDataGenerator.supportedChunkSize} + ({xyz1.z}+1)*{MapDataGenerator.supportedChunkSize}*{chunkHeight};");
-            
-            // Trilinear interpolation
             float c00 = map[to1D(xyz0)] * (1 - xd) + map[to1D(xyz1.x, xyz0.y, xyz0.z)] * xd;
             float c01 = map[to1D(xyz0.x, xyz0.y, xyz1.z)] * (1 - xd) + map[to1D(xyz1.x, xyz0.y, xyz1.z)] * xd;
             float c10 = map[to1D(xyz0.x, xyz1.y, xyz0.z)] * (1 - xd) + map[to1D(xyz1.x, xyz1.y, xyz0.z)] * xd;
