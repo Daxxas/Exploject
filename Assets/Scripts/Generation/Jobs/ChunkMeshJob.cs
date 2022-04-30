@@ -58,19 +58,10 @@ public struct ChunkMeshJob : IJob
             NativeList<float3> chunkVertices = new NativeList<float3>(initVertexCount, Allocator.Temp);
             NativeList<int> chunkTriangles = new NativeList<int>(triangles.Count * 3, Allocator.Temp);
             
-
             int chunkVerticesIndices = 0;
-            int borderVerticesIndices = -1;
+            
             while (triangles.TryDequeue(out Triangle triangle))
             {
-                
-                // If triangle is in a border
-                bool isVertexABorder = triangle.vertexIndexA.x < 0 || triangle.vertexIndexA.z < 0 || triangle.vertexIndexA.x > chunkSize * 100 || triangle.vertexIndexA.z > chunkSize * 100;
-                bool isVertexBBorder = triangle.vertexIndexB.x < 0 || triangle.vertexIndexB.z < 0 || triangle.vertexIndexB.x > chunkSize * 100 || triangle.vertexIndexB.z > chunkSize * 100;
-                bool isVertexCBorder = triangle.vertexIndexC.x < 0 || triangle.vertexIndexC.z < 0 || triangle.vertexIndexC.x > chunkSize * 100 || triangle.vertexIndexC.z > chunkSize * 100;
-                bool isBorderTriangle = isVertexABorder || isVertexBBorder || isVertexCBorder;
-                if (isBorderTriangle)
-                    continue;
                 
                 // Order is C - B - A to have triangle in the right direction
                 
@@ -150,7 +141,7 @@ public struct ChunkMeshJob : IJob
                 normals[i] = float3.zero;
             }
 
-            CalculateNormals(chunkVertices, normals);
+            CalculateNormals(chunkVertices.AsArray(), chunkTriangles.AsArray(), normals);
             
             // Not necessary, only to have non triplanar material working a bit
             // Non-triplanar materials will be streched vertically
@@ -172,13 +163,26 @@ public struct ChunkMeshJob : IJob
             // borderVertices.Dispose();
         }
 
-        private void CalculateNormals(NativeArray<float3> vertices, NativeArray<float3> normals)
+        private void CalculateNormals(NativeArray<float3> vertices, NativeArray<int> triangles, NativeArray<float3> normals)
         {
             // Loop through chunk triangles
-            for (int i = 0; i < vertices.Length; i++)
+            for (int i = 0; i < triangles.Length / 3; i++)
             {
-                float3 normal = SurfaceNormal(i, vertices);
-                normals[i] = math.normalize(normal);
+                int triangleIndex = i * 3;
+                int vert0 = triangles[triangleIndex];
+                int vert1 = triangles[triangleIndex+1];
+                int vert2 = triangles[triangleIndex+2];
+                
+                // Debug.Log($"vert0 {vert0} | vert1 {vert1} | vert2 {vert2}");
+                
+                
+                // No need to normalize, there's no difference noticed for the moment
+                // normalizing create NaN when SurfaceNormal returns a float3(0,0,0) 
+                normals[vert0] = SurfaceNormal(vert0, vertices);
+                normals[vert1] = SurfaceNormal(vert1, vertices);
+                normals[vert2] = SurfaceNormal(vert2, vertices);
+
+                
                 // var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 // go.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
                 // var np = go.AddComponent<NormalPreview>();
@@ -204,31 +208,31 @@ public struct ChunkMeshJob : IJob
                         {
                             float3 offsetValuePos = new float3(currentVert.x + x, currentVert.y + y, currentVert.z + z);
                             float3 gradientVec = currentVert - offsetValuePos;
-                            
                             float valueAtOffsetPos = GetInterpolatedValue(offsetValuePos);
+                            
                             // var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
                             // go.transform.parent = parent.transform;
                             // go.transform.position = offsetValuePos;
                             // go.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+                            // go.name = "Cube - " + offsetValuePos + " = " + valueAtOffsetPos;
                             
-                            if (valueAtOffsetPos >= 0)
+                            if (valueAtOffsetPos > 0)
                             {
                                 // var np = go.AddComponent<NormalPreview>();
                                 // np.normal = math.normalize(gradientVec * valueAtOffsetPos);
                                 // np.valueAtThisPos = valueAtOffsetPos;
+                                
                                 returnNormal += math.normalize(gradientVec * valueAtOffsetPos);
                             }
-                            // else
-                            // {
-                            //     // Destroy(go);
-                            // }
-                            
-                            // Debug.Log($"For value {currentVert}, testing {offsetValuePos}, gradient is {gradientVec}, final math is : {math.normalize(gradientVec * valueAtOffsetPos)}");
+                            else
+                            {
+                                // Destroy(go);
+                            }
                         }
                     }
                 }
             }
-
+            
             return returnNormal;
         }
 
@@ -277,16 +281,27 @@ public struct ChunkMeshJob : IJob
             float yd = (xyz.y - xyz0.y) / (xyz1.y - xyz0.y);
             float zd = (xyz.z - xyz0.z) / (xyz1.z - xyz0.z);
 
-            float c00 = map[to1D(xyz0)] * (1 - xd) + map[to1D(xyz1.x, xyz0.y, xyz0.z)] * xd;
-            float c01 = map[to1D(xyz0.x, xyz0.y, xyz1.z)] * (1 - xd) + map[to1D(xyz1.x, xyz0.y, xyz1.z)] * xd;
-            float c10 = map[to1D(xyz0.x, xyz1.y, xyz0.z)] * (1 - xd) + map[to1D(xyz1.x, xyz1.y, xyz0.z)] * xd;
-            float c11 = map[to1D(xyz0.x, xyz1.y, xyz1.z)] * (1 - xd) + map[to1D(xyz1)] * xd;
+            NativeArray<float> cXXX = new NativeArray<float>(8 ,Allocator.Temp);
+
+            cXXX[0] = map[to1D(xyz0)];                   // c000
+            cXXX[1] = map[to1D(xyz1.x, xyz0.y, xyz0.z)]; // c100
+            cXXX[2] = map[to1D(xyz0.x, xyz0.y, xyz1.z)]; // c001
+            cXXX[3] = map[to1D(xyz1.x, xyz0.y, xyz1.z)]; // c101
+            cXXX[4] = map[to1D(xyz0.x, xyz1.y, xyz0.z)]; // c010
+            cXXX[5] = map[to1D(xyz1.x, xyz1.y, xyz0.z)]; // c110
+            cXXX[6] = map[to1D(xyz0.x, xyz1.y, xyz1.z)]; // c011
+            cXXX[7] = map[to1D(xyz1)];                   // c111
+            
+            float c00 = cXXX[0] * (1 - xd) + cXXX[1] * xd;
+            float c01 = cXXX[2] * (1 - xd) + cXXX[3] * xd;
+            float c10 = cXXX[4] * (1 - xd) + cXXX[5] * xd;
+            float c11 = cXXX[6] * (1 - xd) + cXXX[7] * xd;
             
             float c0 = c00 * (1 - yd) + c10 * yd;
             float c1 = c01 * (1 - yd) + c11 * yd;
             
             float c = c0 * (1 - zd) + c1 * zd;
-            
+
             return c;
 
         }

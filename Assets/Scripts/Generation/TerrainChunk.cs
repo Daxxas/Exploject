@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using DefaultNamespace;
+using TMPro;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
@@ -161,13 +162,13 @@ public class TerrainChunk : MonoBehaviour
         isInit = true;
         
         // chunkMeshJob.Execute();
-        // DebugChunks(vertices, pos);
+        // DebugChunks(vertices, position);
         // DebugData(map);
         
         Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh);
 
         mesh.RecalculateTangents();
-        mc.sharedMesh = mesh;
+        // mc.sharedMesh = mesh;
         triangles.Dispose();
         vertices.Dispose();
         map.Dispose();
@@ -204,4 +205,34 @@ public class TerrainChunk : MonoBehaviour
             }
         }
     }
+    
+    // Call to visualize vertices positions
+    public void DebugChunks(NativeHashMap<int3, float3> vertices, Vector2 offset)
+    {
+        var g = new GameObject("Info of " + offset.x + " " + offset.y);
+        
+        var vertexKeyValues = vertices.GetKeyValueArrays(Allocator.Persistent);
+        var vertex = vertexKeyValues.Values;
+        var vertexIndex = vertexKeyValues.Keys;
+        
+        for (int i = 0; i < vertexIndex.Length; i++)
+        {
+        
+            var tmp = new GameObject();
+            var tmpc = tmp.AddComponent<TextMeshPro>();
+            tmpc.text = vertexIndex[i].ToString();
+            tmpc.fontSize = 0.5f;
+            tmpc.alignment = TextAlignmentOptions.Midline;
+            
+            var c = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            c.transform.position = new Vector3(vertex[i].x + offset.x, vertex[i].y, offset.y + vertex[i].z);
+            c.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+            c.transform.parent = g.transform;
+            tmp.transform.parent = c.transform;
+            tmp.transform.localPosition = new Vector3(0, 0.5f, 0);
+        }
+
+        vertexKeyValues.Dispose();
+    }
+
 }

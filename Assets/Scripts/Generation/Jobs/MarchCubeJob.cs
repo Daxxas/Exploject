@@ -42,8 +42,13 @@ public struct MarchCubeJob : IJobParallelFor
             int y = (idx / supportedChunkSize) % chunkHeight;
             int z = idx / (supportedChunkSize * chunkHeight);
 
-            // Don't calculate when we are too close to the edge of the chunk to prevent out of bound
-            if (x < 1 || z < 1 || x >= supportedChunkSize-4 || y >= chunkHeight-1 || z >= supportedChunkSize-4)
+            if (x % marchCubeSize != 0 || y % marchCubeSize != 0 || z % marchCubeSize != 0)
+            {
+                return;
+            }
+            
+            // Don't calculate when we are too close to the edge of the chunk to prevent out of bound or if it's useless
+            if (x >= chunkSize || y >= chunkHeight - marchCubeSize || z >= chunkSize)
             {
                 return;
             }
@@ -125,12 +130,6 @@ public struct MarchCubeJob : IJobParallelFor
                 float3 vert1 = FindVertexPos(threshold, marchCube[a1].p, marchCube[b1].p, marchCube[a1].val, marchCube[b1].val);
                 float3 vert2 = FindVertexPos(threshold, marchCube[a2].p, marchCube[b2].p, marchCube[a2].val, marchCube[b2].val);
 
-                // offset every vert by -3 for some reason idk, otherwise the chunk isn't really in the middle of its supposed bounds
-                // probably because of supportedChunksize offset
-                vert0.xz -= 1;
-                vert1.xz -= 1;
-                vert2.xz -= 1;
-                
                 // round vert position for hashmap index
                 // this is to avoid having 2 vertices really close to produce smooth terrain
                 int3 roundedVert0 = math.int3(math.round(vert0 * 100f));

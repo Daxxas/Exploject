@@ -31,7 +31,6 @@ public class EndlessTerrain : MonoBehaviour
     {
         viewerPosition = new Vector2(viewer.position.x, viewer.position.z);
         UpdateVisibleChunks();
-        JobHandle.ScheduleBatchedJobs();
     }
 
 
