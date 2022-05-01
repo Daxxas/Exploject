@@ -154,7 +154,7 @@ public struct ChunkMeshJob : IJob
                 bounds = bounds,
                 vertexCount = chunkVertices.Length
             }, MeshUpdateFlags.DontRecalculateBounds);
-            
+
             /////////////////////////////////
             matchingIndices.Dispose();
             chunkVertices.Dispose();

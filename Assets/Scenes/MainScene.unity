@@ -186,7 +186,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: adcf1a52731d4139bb01829ba7360aa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxViewDst: 256
+  chunkViewDistance: 1
   viewer: {fileID: 1412848652}
   dataGenerator: {fileID: 2127954275}
   chunkObject: {fileID: 4480448243231049190, guid: 649b64edaf196d64b80094718a2edf9a, type: 3}
@@ -315,7 +315,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1645069541073255406, guid: e29ede57f32d0334e8c5740cdef9f856, type: 3}
       propertyPath: speed
-      value: 48000
+      value: 2000
       objectReference: {fileID: 0}
     - target: {fileID: 1645069541073255410, guid: e29ede57f32d0334e8c5740cdef9f856, type: 3}
       propertyPath: m_RootOrder

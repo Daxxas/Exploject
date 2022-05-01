@@ -29,7 +29,7 @@ public class TerrainChunk : MonoBehaviour
         position = coord * MapDataGenerator.chunkSize;
         Vector3 positionV3 = new Vector3(position.x, 0, position.y);
         
-        gameObject.name = "Chunk Terrain " + position.x + " " + position.y;
+        gameObject.name = "Chunk Terrain " + coord.x + " " + coord.y;
         
         transform.parent = mapParent;
         transform.position = positionV3;
@@ -152,7 +152,7 @@ public class TerrainChunk : MonoBehaviour
         
         StartCoroutine(ApplyMeshData(meshDataArray, mesh, mc, vertices, triangles, generatedMap, chunkMeshHandle, chunkMeshJob));
         
-        return new JobHandle();
+        return chunkMeshHandle;
     }
     
     private IEnumerator ApplyMeshData(Mesh.MeshDataArray meshDataArray, Mesh mesh, MeshCollider mc, NativeHashMap<int3, float3> vertices, NativeQueue<Triangle> triangles, NativeArray<float> map, JobHandle job, ChunkMeshJob chunkMeshJob)
@@ -167,13 +167,29 @@ public class TerrainChunk : MonoBehaviour
         
         Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh);
 
-        mesh.RecalculateTangents();
-        // mc.sharedMesh = mesh;
+        var colliderJob = new MeshColliderBakeJob()
+        {
+            meshId = mesh.GetInstanceID()
+        };
+
+        JobHandle colliderJobHandle = colliderJob.Schedule();
+
+        StartCoroutine(ApplyMeshCollider(colliderJobHandle, mesh));
+
+        
+        // mesh.RecalculateTangents();
         triangles.Dispose();
         vertices.Dispose();
         map.Dispose();
     }
-    
+
+    private IEnumerator ApplyMeshCollider(JobHandle job, Mesh mesh)
+    {
+        yield return new WaitUntil(() => job.IsCompleted);
+        job.Complete();
+
+        mc.sharedMesh = mesh;
+    }
     
     public void DebugData(NativeArray<float> map)
     {

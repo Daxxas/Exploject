@@ -6,7 +6,7 @@ using UnityEngine;
 
 public class EndlessTerrain : MonoBehaviour
 {
-    [SerializeField] private float maxViewDst = 8;
+    [SerializeField] private int chunkViewDistance = 8;
     [SerializeField] private Transform viewer;
     [SerializeField] private MapDataGenerator dataGenerator;
     [SerializeField] private GameObject chunkObject;
@@ -15,7 +15,6 @@ public class EndlessTerrain : MonoBehaviour
     [ShowInInspector] public static Vector2 viewerPosition;
     private int chunkSize;
     private int chunkHeight;
-    private int chunksVisibleInViewDst;
 
     private Dictionary<Vector2, TerrainChunk> terrainChunkDic = new Dictionary<Vector2, TerrainChunk>();
     private List<TerrainChunk> terrainChunksVisibleLastUpdate = new List<TerrainChunk>();
@@ -23,7 +22,6 @@ public class EndlessTerrain : MonoBehaviour
     {
         chunkSize = MapDataGenerator.chunkSize; 
         chunkHeight = MapDataGenerator.chunkHeight; 
-        chunksVisibleInViewDst = Mathf.RoundToInt(maxViewDst / chunkSize);
         // Debug.Log($"chunksVisibleInViewDst: {chunksVisibleInViewDst}");
     }
 
@@ -45,15 +43,15 @@ public class EndlessTerrain : MonoBehaviour
         int currentChunkCoordX = Mathf.RoundToInt(viewerPosition.x / chunkSize);
         int currentChunkCoordZ = Mathf.RoundToInt(viewerPosition.y / chunkSize);
 
-        for (int zOffset = -chunksVisibleInViewDst; zOffset <= chunksVisibleInViewDst ; zOffset++)
+        for (int zOffset = -chunkViewDistance; zOffset <= chunkViewDistance ; zOffset++)
         {
-            for (int xOffset = -chunksVisibleInViewDst; xOffset <= chunksVisibleInViewDst; xOffset++)
+            for (int xOffset = -chunkViewDistance; xOffset <= chunkViewDistance; xOffset++)
             {
                 Vector2 viewedChunkCoord = new Vector2(currentChunkCoordX + xOffset, currentChunkCoordZ + zOffset);
                 
                 if (terrainChunkDic.ContainsKey(viewedChunkCoord))
                 {
-                    terrainChunkDic[viewedChunkCoord].UpdateChunk(maxViewDst, viewerPosition);
+                    terrainChunkDic[viewedChunkCoord].UpdateChunk(chunkViewDistance, viewerPosition);
                     // if (terrainChunkDic[viewedChunkCoord].IsVisible())
                     // {
                     //     terrainChunksVisibleLastUpdate.Add(terrainChunkDic[viewedChunkCoord]);
@@ -66,5 +64,15 @@ public class EndlessTerrain : MonoBehaviour
                 }
             }
         }
+    }
+
+    private void OnDrawGizmos()
+    {
+        int currentChunkCoordX = Mathf.RoundToInt(viewerPosition.x - (viewerPosition.x % chunkSize) + chunkSize / 2);
+        int currentChunkCoordZ = Mathf.RoundToInt(viewerPosition.y - (viewerPosition.y % chunkSize) + chunkSize / 2);
+        Debug.Log(new Vector3(currentChunkCoordX, 128, currentChunkCoordZ));
+        
+        Gizmos.color = Color.magenta;
+        Gizmos.DrawCube(new Vector3(currentChunkCoordX, 128, currentChunkCoordZ), new Vector3(3,3,3));
     }
 }
