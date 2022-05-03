@@ -166,29 +166,34 @@ public struct ChunkMeshJob : IJob
         private void CalculateNormals(NativeArray<float3> vertices, NativeArray<int> triangles, NativeArray<float3> normals)
         {
             // Loop through chunk triangles
-            for (int i = 0; i < triangles.Length / 3; i++)
-            {
-                int triangleIndex = i * 3;
-                int vert0 = triangles[triangleIndex];
-                int vert1 = triangles[triangleIndex+1];
-                int vert2 = triangles[triangleIndex+2];
-                
-                // Debug.Log($"vert0 {vert0} | vert1 {vert1} | vert2 {vert2}");
-                
-                
-                // No need to normalize, there's no difference noticed for the moment
-                // normalizing create NaN when SurfaceNormal returns a float3(0,0,0) 
-                normals[vert0] = SurfaceNormal(vert0, vertices);
-                normals[vert1] = SurfaceNormal(vert1, vertices);
-                normals[vert2] = SurfaceNormal(vert2, vertices);
+            // for (int i = 0; i < triangles.Length / 3; i++)
+            // {
+            //     int triangleIndex = i * 3;
+            //     int vert0 = triangles[triangleIndex];
+            //     int vert1 = triangles[triangleIndex+1];
+            //     int vert2 = triangles[triangleIndex+2];
+            //     
+            //     // Debug.Log($"vert0 {vert0} | vert1 {vert1} | vert2 {vert2}");
+            //     
+            //     
+            //     // No need to normalize, there's no difference noticed for the moment
+            //     // normalizing create NaN when SurfaceNormal returns a float3(0,0,0) 
+            //     normals[vert0] = SurfaceNormal(vert0, vertices);
+            //     normals[vert1] = SurfaceNormal(vert1, vertices);
+            //     normals[vert2] = SurfaceNormal(vert2, vertices);
+            //
+            //     
+            //     // var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            //     // go.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+            //     // var np = go.AddComponent<NormalPreview>();
+            //     // np.normal = normals[i];
+            //     // np.normalColor = Color.blue;
+            //     // np.transform.position = vertices[i];
+            // }
 
-                
-                // var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                // go.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
-                // var np = go.AddComponent<NormalPreview>();
-                // np.normal = normals[i];
-                // np.normalColor = Color.blue;
-                // np.transform.position = vertices[i];
+            for (int i = 0; i < vertices.Length; i++)
+            {
+                normals[i] = SurfaceNormal(i, vertices);
             }
         }
 

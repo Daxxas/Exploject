@@ -1,13 +1,17 @@
 using System;
 using System.Collections;
+using System.Numerics;
 using DefaultNamespace;
 using TMPro;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Vector2 = UnityEngine.Vector2;
+using Vector3 = UnityEngine.Vector3;
 
 
 public class TerrainChunk : MonoBehaviour
@@ -25,15 +29,11 @@ public class TerrainChunk : MonoBehaviour
     public TerrainChunk InitChunk(Vector2 coord, MapDataGenerator dataGenerator, Transform mapParent)
     {
         mapDataGenerator = dataGenerator;
-
         position = coord * MapDataGenerator.chunkSize;
-        Vector3 positionV3 = new Vector3(position.x, 0, position.y);
-        
         gameObject.name = "Chunk Terrain " + coord.x + " " + coord.y;
         
         transform.parent = mapParent;
-        transform.position = positionV3;
-        // SetVisible(false);
+        transform.position = new Vector3(position.x, 0, position.y);
 
         // Variables that will be filled & passed along jobs
         NativeArray<float> generatedMap = new NativeArray<float>(MapDataGenerator.chunkHeight * (MapDataGenerator.supportedChunkSize) * (MapDataGenerator.supportedChunkSize), Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
@@ -41,15 +41,22 @@ public class TerrainChunk : MonoBehaviour
         var mapDataHandle = mapDataGenerator.GenerateMapData(position, generatedMap);
 
         GenerateChunkMesh(generatedMap, MapDataGenerator.chunkSize, MapDataGenerator.chunkBorderIncrease, MapDataGenerator.chunkHeight, MapDataGenerator.threshold, mapDataHandle);
-
+        
+        SetVisible(false);
+        
         return this;
     }
-    
-    public void UpdateChunk(float maxViewDst, Vector2 viewerPosition)
+
+
+    public void UpdateChunkVisibility(float maxViewDst, Vector2 viewerPosition)
     {
-        float viewerDistanceFromNearEdge = Mathf.Sqrt(bounds.SqrDistance(viewerPosition));
+        Vector3 transposedViewerPosition = new Vector3(viewerPosition.x, MapDataGenerator.chunkHeight / 2, viewerPosition.y) -
+                      transform.position;
+        
+        float viewerDistanceFromNearEdge = Mathf.Sqrt(bounds.SqrDistance(transposedViewerPosition));
+        
         bool visible = viewerDistanceFromNearEdge <= maxViewDst;
-        // SetVisible(visible);
+        SetVisible(visible);
     }
 
     public void SetVisible(bool visible)
@@ -60,17 +67,17 @@ public class TerrainChunk : MonoBehaviour
         {
             gameObject.SetActive(visible);
         }
-        else if(visible == false)
+        else
         {
-            StartCoroutine(WaitForInitBeforeVisible());
+            StartCoroutine(WaitForInitBeforeVisible(visible));
         }
         
     }
 
-    private IEnumerator WaitForInitBeforeVisible()
+    private IEnumerator WaitForInitBeforeVisible(bool visible)
     {
         yield return new WaitUntil(() => isInit);
-        SetVisible(false);
+        SetVisible(visible);
     }
 
     public bool IsVisible()
@@ -159,7 +166,6 @@ public class TerrainChunk : MonoBehaviour
     {
         yield return new WaitUntil(() => job.IsCompleted);
         job.Complete();
-        isInit = true;
         
         // chunkMeshJob.Execute();
         // DebugChunks(vertices, position);
@@ -173,11 +179,11 @@ public class TerrainChunk : MonoBehaviour
         };
 
         JobHandle colliderJobHandle = colliderJob.Schedule();
+        Debug.Log("Apply mesh");
 
         StartCoroutine(ApplyMeshCollider(colliderJobHandle, mesh));
 
-        
-        // mesh.RecalculateTangents();
+        mesh.RecalculateTangents();
         triangles.Dispose();
         vertices.Dispose();
         map.Dispose();
@@ -187,7 +193,8 @@ public class TerrainChunk : MonoBehaviour
     {
         yield return new WaitUntil(() => job.IsCompleted);
         job.Complete();
-
+        isInit = true;
+        Debug.Log("Set collider");
         mc.sharedMesh = mesh;
     }
     

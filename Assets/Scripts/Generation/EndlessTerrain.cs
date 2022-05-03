@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using Unity.Jobs;
+using UnityEditor;
 using UnityEngine;
 
 public class EndlessTerrain : MonoBehaviour
@@ -34,10 +35,10 @@ public class EndlessTerrain : MonoBehaviour
 
     private void UpdateVisibleChunks()
     {
-        // foreach (var terrainChunk in terrainChunksVisibleLastUpdate)
-        // {
-        //     terrainChunk.SetVisible(false);
-        // }
+        foreach (var terrainChunk in terrainChunksVisibleLastUpdate)
+        {
+            terrainChunk.SetVisible(false);
+        }
         terrainChunksVisibleLastUpdate.Clear();
 
         int currentChunkCoordX = Mathf.RoundToInt(viewerPosition.x / chunkSize);
@@ -51,11 +52,11 @@ public class EndlessTerrain : MonoBehaviour
                 
                 if (terrainChunkDic.ContainsKey(viewedChunkCoord))
                 {
-                    terrainChunkDic[viewedChunkCoord].UpdateChunk(chunkViewDistance, viewerPosition);
-                    // if (terrainChunkDic[viewedChunkCoord].IsVisible())
-                    // {
-                    //     terrainChunksVisibleLastUpdate.Add(terrainChunkDic[viewedChunkCoord]);
-                    // }
+                    terrainChunkDic[viewedChunkCoord].UpdateChunkVisibility(chunkViewDistance * MapDataGenerator.chunkSize, viewerPosition);
+                    if (terrainChunkDic[viewedChunkCoord].IsVisible())
+                    {
+                        terrainChunksVisibleLastUpdate.Add(terrainChunkDic[viewedChunkCoord]);
+                    }
                 }
                 else
                 {
@@ -68,11 +69,12 @@ public class EndlessTerrain : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        int currentChunkCoordX = Mathf.RoundToInt(viewerPosition.x - (viewerPosition.x % chunkSize) + chunkSize / 2);
-        int currentChunkCoordZ = Mathf.RoundToInt(viewerPosition.y - (viewerPosition.y % chunkSize) + chunkSize / 2);
-        Debug.Log(new Vector3(currentChunkCoordX, 128, currentChunkCoordZ));
-        
-        Gizmos.color = Color.magenta;
-        Gizmos.DrawCube(new Vector3(currentChunkCoordX, 128, currentChunkCoordZ), new Vector3(3,3,3));
+        // int currentChunkCoordX = Mathf.RoundToInt((viewerPosition.x / chunkSize)) * chunkSize  + chunkSize/2;
+        // int currentChunkCoordZ = Mathf.RoundToInt((viewerPosition.y / chunkSize)) * chunkSize  + chunkSize/2;
+        //
+        // Vector3 cubepos = new Vector3(currentChunkCoordX, 128, currentChunkCoordZ);
+        // Handles.Label(cubepos + Vector3.up * 3, $"{cubepos}");
+        // Gizmos.color = Color.magenta;
+        // Gizmos.DrawWireCube(cubepos, new Vector3(chunkSize,256,chunkSize));
     }
 }
