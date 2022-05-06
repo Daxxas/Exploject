@@ -181,7 +181,8 @@ public class TerrainChunk : MonoBehaviour
         JobHandle colliderJobHandle = colliderJob.Schedule();
         Debug.Log("Apply mesh");
 
-        StartCoroutine(ApplyMeshCollider(colliderJobHandle, mesh));
+
+        // StartCoroutine(ApplyMeshCollider(colliderJobHandle, mesh));
 
         mesh.RecalculateTangents();
         triangles.Dispose();
