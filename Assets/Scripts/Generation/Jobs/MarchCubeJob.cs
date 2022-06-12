@@ -19,7 +19,7 @@ public struct MarchCubeJob : IJobParallelFor
         [WriteOnly]
         public NativeQueue<Triangle>.ParallelWriter triangles;
         [WriteOnly]
-        public NativeHashMap<int3, float3>.ParallelWriter vertices;
+        public NativeHashMap<int3, Vector3>.ParallelWriter vertices;
         
         public int marchCubeSize;
         public int chunkSize;
@@ -132,9 +132,9 @@ public struct MarchCubeJob : IJobParallelFor
 
                 // round vert position for hashmap index
                 // this is to avoid having 2 vertices really close to produce smooth terrain
-                int3 roundedVert0 = math.int3(math.round(vert0 * 100f));
-                int3 roundedVert1 = math.int3(math.round(vert1 * 100f));
-                int3 roundedVert2 = math.int3(math.round(vert2 * 100f));
+                int3 roundedVert0 = math.int3(math.round(vert0 * 100));
+                int3 roundedVert1 = math.int3(math.round(vert1 * 100));
+                int3 roundedVert2 = math.int3(math.round(vert2 * 100));
 
                 // try add vertices to hashmap with rounded value as key
                 // if we already have a close vertex in the hashmap (because the rounded vertex is the same)
@@ -150,6 +150,12 @@ public struct MarchCubeJob : IJobParallelFor
                     vertexIndexB = roundedVert1,
                     vertexIndexC = roundedVert2
                 };
+                
+                //TODO :
+                // Au lieu de queue les triangles
+                // Il faut créer l'array de Vector3 & des triangles ici de manière concurrente
+                // 1. faut déclarer les tableaux à outputs dans ce job
+                // 2. On garde le système de hashmap, sauf qu'après on ajoute au tableau de vertices & triangles comme il faut
                 
                 // Triangles are stored in a queue because we don't know how many triangles we will get & we can write in parallel easily in a queue
                 triangles.Enqueue(triangle);

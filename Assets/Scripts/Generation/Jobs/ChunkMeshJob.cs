@@ -12,51 +12,28 @@ public struct ChunkMeshJob : IJob
     {
         // Input reference
         public NativeQueue<Triangle> triangles;
-        public NativeHashMap<int3, float3> uniqueVertices;
+        [ReadOnly] [NativeDisableParallelForRestriction]
+        public NativeHashMap<int3, Vector3> uniqueVertices;
         public Bounds bounds;
         public NativeArray<float> map;
         // Output
-        public Mesh.MeshDataArray meshDataArray;
-
+        public NativeList<Vector3> chunkVertices;
+        public NativeList<int> chunkTriangles;
+        public NativeList<Vector3> chunkNormals;
+        
         public int chunkSize;
         public int chunkHeight;
 
         public void Execute()
         {
-            // Initialize meshData
-            Mesh.MeshData meshData = meshDataArray[0];
-            
-            #region initialize meshData
-            
-            int vertexAttributeCount = 4;
-            int initVertexCount = triangles.Count * 3;
-            int triangleIndexCount = triangles.Count * 3;
-            
-            // Attributes
-            var vertexAttributes = new NativeArray<VertexAttributeDescriptor>(
-                vertexAttributeCount, Allocator.Temp, NativeArrayOptions.UninitializedMemory
-            );
-            vertexAttributes[0] = new VertexAttributeDescriptor(dimension: 3);
-            vertexAttributes[1] = new VertexAttributeDescriptor(
-                VertexAttribute.Normal, dimension: 3, stream: 1
-            );
-            vertexAttributes[2] = new VertexAttributeDescriptor(
-                VertexAttribute.Tangent, dimension: 4, stream: 2
-            );
-            vertexAttributes[3] = new VertexAttributeDescriptor(
-                VertexAttribute.TexCoord0, dimension: 2, stream: 3
-            );
-            #endregion
             
             // Creating vertices & triangles arrays
             
             // Since it's not possible to use float as keys in a hashmap,
             // Instead we make a hashmap that stores the indices we already added in the vertices array & where we stored it
             // so if a new triangle references an already placed vertex, we know where it is already in the array
-            NativeHashMap<int3, int> matchingIndices = new NativeHashMap<int3, int>(initVertexCount, Allocator.Temp);
+            NativeHashMap<int3, int> matchingIndices = new NativeHashMap<int3, int>(triangles.Count * 3, Allocator.Temp);
             // vertices & triangles arrays 
-            NativeList<float3> chunkVertices = new NativeList<float3>(initVertexCount, Allocator.Temp);
-            NativeList<int> chunkTriangles = new NativeList<int>(triangles.Count * 3, Allocator.Temp);
             
             int chunkVerticesIndices = 0;
             
@@ -97,6 +74,7 @@ public struct ChunkMeshJob : IJob
                     chunkTriangles.Add(chunkVerticesIndices);
 
                     chunkVerticesIndices++;
+
                 }
                 else
                 {
@@ -109,6 +87,7 @@ public struct ChunkMeshJob : IJob
                 {
                     chunkVertices.Add(uniqueVertices[triangle.vertexIndexA]);
                     chunkTriangles.Add(chunkVerticesIndices);
+
                     chunkVerticesIndices++;
                 }
                 else
@@ -121,49 +100,27 @@ public struct ChunkMeshJob : IJob
             // Apply calculated array to mesh data arrays
             // we don't know in advance the vertices array length, so it's not possible to directly modify the
             // meshData vertices array
-            meshData.SetVertexBufferParams(chunkVertices.Length, vertexAttributes);
-            meshData.SetIndexBufferParams(chunkTriangles.Length, IndexFormat.UInt32);
-            vertexAttributes.Dispose();
 
-            NativeArray<float3> meshDataVertices = meshData.GetVertexData<float3>();
-            NativeArray<int> triangleIndices = meshData.GetIndexData<int>();
-            
-            chunkVertices.AsArray().CopyTo(meshDataVertices);
-            chunkTriangles.AsArray().CopyTo(triangleIndices);
-            
-            
+
             // Normal calculation
-            NativeArray<float3> normals = meshData.GetVertexData<float3>(1);
 
-            for (int i = 0; i < meshDataVertices.Length; i++)
+            for (int i = 0; i < chunkVertices.Length; i++)
             {
                 // normals needs to be set to zero before calculating them
-                normals[i] = float3.zero;
+                chunkNormals.Add(float3.zero);
             }
 
-            CalculateNormals(chunkVertices.AsArray(), chunkTriangles.AsArray(), normals);
+            CalculateNormals(chunkVertices.AsArray(), chunkTriangles.AsArray(), chunkNormals);
             
-            // Not necessary, only to have non triplanar material working a bit
-            // Non-triplanar materials will be streched vertically
-            SetBasicUVs( meshDataVertices, meshData.GetVertexData<float2>(3));
+            // TODO Set UVs somewhere
             
-            // Finalize meshData
-            meshData.subMeshCount = 1;
-            meshData.SetSubMesh(0, new SubMeshDescriptor(0, chunkTriangles.Length)
-            {
-                bounds = bounds,
-                vertexCount = chunkVertices.Length
-            }, MeshUpdateFlags.DontRecalculateBounds);
-
             /////////////////////////////////
             matchingIndices.Dispose();
-            chunkVertices.Dispose();
-            chunkTriangles.Dispose();
             // borderTriangles.Dispose();
             // borderVertices.Dispose();
         }
 
-        private void CalculateNormals(NativeArray<float3> vertices, NativeArray<int> triangles, NativeArray<float3> normals)
+        private void CalculateNormals(NativeArray<Vector3> vertices, NativeArray<int> triangles, NativeArray<Vector3> normals)
         {
             // Loop through chunk triangles
             // for (int i = 0; i < triangles.Length / 3; i++)
@@ -197,7 +154,7 @@ public struct ChunkMeshJob : IJob
             }
         }
 
-        float3 SurfaceNormal(int pointIndex, NativeArray<float3> vertices)
+        float3 SurfaceNormal(int pointIndex, NativeArray<Vector3> vertices)
         {
             float3 returnNormal = float3.zero;
             float3 currentVert = vertices[pointIndex];
@@ -322,11 +279,11 @@ public struct ChunkMeshJob : IJob
             return to1D(xyz.x, xyz.y, xyz.z);
         }
         
-        private void SetBasicUVs(NativeArray<float3> vertices, NativeArray<float2> uvs)
+        private void SetBasicUVs(NativeArray<Vector3> vertices, NativeArray<float2> uvs)
         {
             for (int i = 0; i < vertices.Length; i++)
             {
-                uvs[i] = vertices[i].xz;
+                uvs[i] = new float2(vertices[i].x,vertices[i].z);
             }
         }
     }

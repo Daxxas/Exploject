@@ -97,16 +97,19 @@ public class TerrainChunk : MonoBehaviour
     //////////////////////////////////////////////////////////////////
     
     private NativeQueue<Triangle> triangles;
-    private NativeHashMap<int3, float3> vertices;
+    private NativeHashMap<int3, Vector3> vertices;
     private Mesh.MeshDataArray meshDataArray;
     
     public JobHandle GenerateChunkMesh(NativeArray<float> generatedMap, int chunkSize, int chunkBorderIncrease, int chunkHeight, float threshold, JobHandle mapDataHandle)
     {
         int supportedChunkSize = chunkSize + chunkBorderIncrease;
-        triangles = new NativeQueue<Triangle>(Allocator.Persistent);
-        vertices = new NativeHashMap<int3, float3>((chunkHeight * supportedChunkSize * supportedChunkSize), Allocator.Persistent);
+        triangles = new NativeQueue<Triangle>(Allocator.TempJob);
+        vertices = new NativeHashMap<int3, Vector3>((chunkHeight * supportedChunkSize * supportedChunkSize), Allocator.TempJob);
 
-        
+        NativeList<int> chunkTriangles = new NativeList<int>(Allocator.Persistent);
+        NativeList<Vector3> chunkVertices = new NativeList<Vector3>(Allocator.Persistent);
+        NativeList<Vector3> chunkNormals = new NativeList<Vector3>(Allocator.Persistent);
+
         // Generate mesh object with its components
         bounds = new Bounds(new Vector3(chunkSize / 2, chunkHeight / 2, chunkSize / 2), new Vector3(chunkSize, chunkHeight, chunkSize));
         // gameObject.AddComponent<BoundGizmo>();
@@ -117,11 +120,9 @@ public class TerrainChunk : MonoBehaviour
         };
         
         mf.sharedMesh = mesh;
+        mc.sharedMesh = mesh;
         mr.material = meshMaterial;
-        
-        meshDataArray = Mesh.AllocateWritableMeshData(1);
 
-        
         // Start marching cube based on a map data
         var marchJob = new MarchCubeJob()
         {
@@ -149,56 +150,49 @@ public class TerrainChunk : MonoBehaviour
             triangles = triangles,
             uniqueVertices = vertices,
             bounds = bounds,
-            meshDataArray = meshDataArray,
             map = generatedMap,
             chunkHeight = chunkHeight,
-            chunkSize = chunkSize
+            chunkSize = chunkSize,
+            chunkTriangles = chunkTriangles,
+            chunkNormals = chunkNormals,
+            chunkVertices = chunkVertices
         };
 
         var chunkMeshHandle = chunkMeshJob.Schedule(marchHandle);
         
-        StartCoroutine(ApplyMeshData(meshDataArray, mesh, mc, vertices, triangles, generatedMap, chunkMeshHandle, chunkMeshJob));
+        StartCoroutine(ApplyMeshData(mesh, chunkVertices, chunkNormals, chunkTriangles, mc, vertices, triangles, generatedMap, chunkMeshHandle, chunkMeshJob));
         
         return chunkMeshHandle;
     }
     
-    private IEnumerator ApplyMeshData(Mesh.MeshDataArray meshDataArray, Mesh mesh, MeshCollider mc, NativeHashMap<int3, float3> vertices, NativeQueue<Triangle> triangles, NativeArray<float> map, JobHandle job, ChunkMeshJob chunkMeshJob)
+    private IEnumerator ApplyMeshData(Mesh mesh, NativeList<Vector3> verts, NativeList<Vector3> normals, NativeList<int> tris, MeshCollider mc, NativeHashMap<int3, Vector3> vertices, NativeQueue<Triangle> triangles, NativeArray<float> map, JobHandle job, ChunkMeshJob chunkMeshJob)
     {
         yield return new WaitUntil(() => job.IsCompleted);
         job.Complete();
-        
-        // chunkMeshJob.Execute();
-        // DebugChunks(vertices, position);
-        // DebugData(map);
-        
-        Mesh.ApplyAndDisposeWritableMeshData(meshDataArray, mesh);
 
+        mesh.SetVertices(verts.ToArray());
+        mesh.SetNormals(normals.ToArray());
+        mesh.SetTriangles(tris.ToArray(),0);
+        
         var colliderJob = new MeshColliderBakeJob()
         {
             meshId = mesh.GetInstanceID()
         };
 
         JobHandle colliderJobHandle = colliderJob.Schedule();
-        Debug.Log("Apply mesh");
-
-
-        // StartCoroutine(ApplyMeshCollider(colliderJobHandle, mesh));
-
-        mesh.RecalculateTangents();
-        triangles.Dispose();
-        vertices.Dispose();
-        map.Dispose();
-    }
-
-    private IEnumerator ApplyMeshCollider(JobHandle job, Mesh mesh)
-    {
-        yield return new WaitUntil(() => job.IsCompleted);
-        job.Complete();
         isInit = true;
-        Debug.Log("Set collider");
-        mc.sharedMesh = mesh;
+        
+        mesh.RecalculateTangents();
+
+        triangles.Dispose(colliderJobHandle);
+        vertices.Dispose(colliderJobHandle);
+        map.Dispose(colliderJobHandle);
+        verts.Dispose(colliderJobHandle);
+        normals.Dispose(colliderJobHandle);
+        tris.Dispose(colliderJobHandle);
     }
-    
+
+
     public void DebugData(NativeArray<float> map)
     {
         for (int idx = 0; idx < map.Length; idx++)
