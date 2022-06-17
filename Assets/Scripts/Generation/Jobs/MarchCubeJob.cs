@@ -1,5 +1,8 @@
+using System;
+using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
@@ -8,18 +11,18 @@ using UnityEngine;
 [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
 public struct MarchCubeJob : IJobParallelFor
     {
-        [Unity.Collections.ReadOnly]
+        [ReadOnly]
         public NativeArray<float> map;
-        [Unity.Collections.ReadOnly]
+        [ReadOnly]
         public NativeArray<int> triangulation;
-        [Unity.Collections.ReadOnly]
+        [ReadOnly]
         public NativeArray<int> cornerIndexAFromEdge;
-        [Unity.Collections.ReadOnly]
+        [ReadOnly]
         public NativeArray<int> cornerIndexBFromEdge;
         [WriteOnly]
         public NativeQueue<Triangle>.ParallelWriter triangles;
         [WriteOnly]
-        public NativeHashMap<int3, Vector3>.ParallelWriter vertices;
+        public NativeHashMap<Edge, float3>.ParallelWriter vertices;
         
         public int marchCubeSize;
         public int chunkSize;
@@ -111,54 +114,30 @@ public struct MarchCubeJob : IJobParallelFor
             if (cubeindex == 255 || cubeindex == 0) 
                 return;
 
-            // From the cube configuration, add triangles & vertices to mesh 
-            for (int i = 0; triangulation[cubeindex * 16 + i] != -1; i += 3)
+            unsafe
             {
                 
-                // Get corners from edges
-                int a0 = cornerIndexAFromEdge[triangulation[cubeindex * 16 + i]];
-                int b0 = cornerIndexBFromEdge[triangulation[cubeindex * 16 + i]];
-                
-                int a1 = cornerIndexAFromEdge[triangulation[cubeindex * 16 + (i+1)]];
-                int b1 = cornerIndexBFromEdge[triangulation[cubeindex * 16 + (i+1)]];
-                
-                int a2 = cornerIndexAFromEdge[triangulation[cubeindex * 16 + (i+2)]];
-                int b2 = cornerIndexBFromEdge[triangulation[cubeindex * 16 + (i+2)]];
-
-                // Find vertex position on edge & add them to vertices list
-                float3 vert0 = FindVertexPos(threshold, marchCube[a0].p, marchCube[b0].p, marchCube[a0].val, marchCube[b0].val);
-                float3 vert1 = FindVertexPos(threshold, marchCube[a1].p, marchCube[b1].p, marchCube[a1].val, marchCube[b1].val);
-                float3 vert2 = FindVertexPos(threshold, marchCube[a2].p, marchCube[b2].p, marchCube[a2].val, marchCube[b2].val);
-
-                // round vert position for hashmap index
-                // this is to avoid having 2 vertices really close to produce smooth terrain
-                int3 roundedVert0 = math.int3(math.round(vert0 * 100));
-                int3 roundedVert1 = math.int3(math.round(vert1 * 100));
-                int3 roundedVert2 = math.int3(math.round(vert2 * 100));
-
-                // try add vertices to hashmap with rounded value as key
-                // if we already have a close vertex in the hashmap (because the rounded vertex is the same)
-                // then it won't be added
-                vertices.TryAdd(roundedVert0, vert0);
-                vertices.TryAdd(roundedVert1, vert1);
-                vertices.TryAdd(roundedVert2, vert2);
-
-                // Triangle only holds reference to vertices array (int3)
-                Triangle triangle = new Triangle()
+                // From the cube configuration, add triangles & vertices to mesh 
+                for (int i = 0; triangulation[cubeindex * 16 + i] != -1; i += 3)
                 {
-                    vertexIndexA = roundedVert0, 
-                    vertexIndexB = roundedVert1,
-                    vertexIndexC = roundedVert2
-                };
-                
-                //TODO :
-                // Au lieu de queue les triangles
-                // Il faut créer l'array de Vector3 & des triangles ici de manière concurrente
-                // 1. faut déclarer les tableaux à outputs dans ce job
-                // 2. On garde le système de hashmap, sauf qu'après on ajoute au tableau de vertices & triangles comme il faut
-                
-                // Triangles are stored in a queue because we don't know how many triangles we will get & we can write in parallel easily in a queue
-                triangles.Enqueue(triangle);
+                    Triangle triangle = new Triangle();
+                        
+                    for (int j = 0; j < 3; j++)
+                    {
+                        int a0 = cornerIndexAFromEdge[triangulation[cubeindex * 16 + i + j]];
+                        int b0 = cornerIndexBFromEdge[triangulation[cubeindex * 16 + i + j]];
+                        Edge edge0 = new Edge(marchCube[a0].p, marchCube[b0].p);
+                        
+                        vertices.TryAdd(new Edge(marchCube[a0].p, marchCube[b0].p), FindVertexPos(threshold,
+                            marchCube[a0].p, marchCube[b0].p, marchCube[a0].val,
+                            marchCube[b0].val));
+
+                        triangle[j] = edge0;
+                    }
+                    
+                    // Triangles are stored in a queue because we don't know how many triangles we will get & we can write in parallel easily in a queue
+                    triangles.Enqueue(triangle);
+                }
             }
 
             marchCube.Dispose();
@@ -196,3 +175,25 @@ public struct MarchCubeJob : IJobParallelFor
         }
 
     }
+    
+[BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
+public struct Edge : IEquatable<Edge>
+{
+    public readonly int3 point1;
+    public readonly int3 point2;
+    public Edge(int3 item1, int3 item2) { point1 = item1; point2 = item2;}
+
+    public bool Equals(Edge other)
+    {
+        return math.all(other.point1 == point1) && math.all(other.point2 == point2);
+    }
+
+    public override int GetHashCode()
+    {
+        int hash = 13;
+        hash = (hash * 7) + point1.GetHashCode();
+        hash = (hash * 7) + point2.GetHashCode();
+
+        return hash;
+    }
+}

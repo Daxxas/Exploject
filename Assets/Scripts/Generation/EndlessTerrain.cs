@@ -37,7 +37,7 @@ public class EndlessTerrain : MonoBehaviour
     {
         foreach (var terrainChunk in terrainChunksVisibleLastUpdate)
         {
-            terrainChunk.SetVisible(false);
+            // terrainChunk.SetVisible(false);
         }
         terrainChunksVisibleLastUpdate.Clear();
 

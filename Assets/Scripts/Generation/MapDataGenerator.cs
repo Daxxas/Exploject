@@ -20,7 +20,7 @@ public class MapDataGenerator : MonoBehaviour
 {
     public int seed;
     
-    [ShowInInspector] public const int chunkSize = 64;
+    [ShowInInspector] public const int chunkSize = 32;
     [ShowInInspector] public const int chunkHeight = 128;
     [ShowInInspector] public const float threshold = 0;
     public const int chunkBorderIncrease = 4;
@@ -68,7 +68,7 @@ public class MapDataGenerator : MonoBehaviour
 
     // First job to be called from CreateChunk to generate MapData 
     [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
-    public struct   MapDataJob : IJobParallelFor
+    public struct MapDataJob : IJobParallelFor
     {
         // Input data
         public int supportedChunkSize;
@@ -110,7 +110,7 @@ public class MapDataGenerator : MonoBehaviour
             generatedMap = generatedMap
         };
         
-        JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 4);
+        JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 100);
         
         return mapDataHandle;
     }

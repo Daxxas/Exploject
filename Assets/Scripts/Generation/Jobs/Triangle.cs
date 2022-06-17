@@ -2,11 +2,11 @@ using Unity.Mathematics;
 
 public struct Triangle
 {
-    public int3 vertexIndexA;
-    public int3 vertexIndexB;
-    public int3 vertexIndexC;
+    public Edge vertexIndexA;
+    public Edge vertexIndexB;
+    public Edge vertexIndexC;
         
-    public int3 this [int i] {
+    public Edge this [int i] {
         get {
             switch (i) {
                 case 0:
@@ -17,9 +17,23 @@ public struct Triangle
                     return vertexIndexC;
             }
         }
+        set
+        {
+            switch (i) {
+                case 0:
+                    vertexIndexA = value;
+                    break;
+                case 1:
+                    vertexIndexB = value;
+                    break;
+                default:
+                    vertexIndexC = value;
+                    break;
+            }
+        }
     }
 
-    public Triangle(int3 a, int3 b, int3 c)
+    public Triangle(Edge a, Edge b, Edge c)
     {
         this.vertexIndexA = a;
         this.vertexIndexB = b;

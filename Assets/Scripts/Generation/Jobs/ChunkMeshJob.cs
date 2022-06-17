@@ -1,5 +1,6 @@
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
@@ -13,12 +14,15 @@ public struct ChunkMeshJob : IJob
         // Input reference
         public NativeQueue<Triangle> triangles;
         [ReadOnly] [NativeDisableParallelForRestriction]
-        public NativeHashMap<int3, Vector3> uniqueVertices;
-        public Bounds bounds;
+        public NativeHashMap<Edge, float3> uniqueVertices;
+        [ReadOnly]
         public NativeArray<float> map;
         // Output
+
         public NativeList<Vector3> chunkVertices;
+
         public NativeList<int> chunkTriangles;
+
         public NativeList<Vector3> chunkNormals;
         
         public int chunkSize;
@@ -32,7 +36,7 @@ public struct ChunkMeshJob : IJob
             // Since it's not possible to use float as keys in a hashmap,
             // Instead we make a hashmap that stores the indices we already added in the vertices array & where we stored it
             // so if a new triangle references an already placed vertex, we know where it is already in the array
-            NativeHashMap<int3, int> matchingIndices = new NativeHashMap<int3, int>(triangles.Count * 3, Allocator.Temp);
+            NativeHashMap<Edge, int> matchingIndices = new NativeHashMap<Edge, int>(triangles.Count * 3, Allocator.Temp);
             // vertices & triangles arrays 
             
             int chunkVerticesIndices = 0;

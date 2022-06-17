@@ -5,10 +5,12 @@ using DefaultNamespace;
 using TMPro;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 using Vector2 = UnityEngine.Vector2;
 using Vector3 = UnityEngine.Vector3;
@@ -25,7 +27,14 @@ public class TerrainChunk : MonoBehaviour
     private Vector2 position;
     private Bounds bounds;
     private bool isInit = false;
-    
+
+    private CustomSampler sampler;
+
+    private void Start()
+    {
+        sampler = CustomSampler.Create("TerrainChunk");
+    }
+
     public TerrainChunk InitChunk(Vector2 coord, MapDataGenerator dataGenerator, Transform mapParent)
     {
         mapDataGenerator = dataGenerator;
@@ -97,18 +106,18 @@ public class TerrainChunk : MonoBehaviour
     //////////////////////////////////////////////////////////////////
     
     private NativeQueue<Triangle> triangles;
-    private NativeHashMap<int3, Vector3> vertices;
+    private NativeHashMap<Edge, float3> uniqueVertices;
     private Mesh.MeshDataArray meshDataArray;
     
     public JobHandle GenerateChunkMesh(NativeArray<float> generatedMap, int chunkSize, int chunkBorderIncrease, int chunkHeight, float threshold, JobHandle mapDataHandle)
     {
         int supportedChunkSize = chunkSize + chunkBorderIncrease;
         triangles = new NativeQueue<Triangle>(Allocator.TempJob);
-        vertices = new NativeHashMap<int3, Vector3>((chunkHeight * supportedChunkSize * supportedChunkSize), Allocator.TempJob);
+        uniqueVertices = new NativeHashMap<Edge, float3>((chunkHeight * supportedChunkSize * supportedChunkSize), Allocator.Persistent);
 
-        NativeList<int> chunkTriangles = new NativeList<int>(Allocator.Persistent);
-        NativeList<Vector3> chunkVertices = new NativeList<Vector3>(Allocator.Persistent);
-        NativeList<Vector3> chunkNormals = new NativeList<Vector3>(Allocator.Persistent);
+        NativeList<int> chunkTriangles = new NativeList<int>(Allocator.TempJob);
+        NativeList<Vector3> chunkVertices = new NativeList<Vector3>(Allocator.TempJob);
+        NativeList<Vector3> chunkNormals = new NativeList<Vector3>(Allocator.TempJob);
 
         // Generate mesh object with its components
         bounds = new Bounds(new Vector3(chunkSize / 2, chunkHeight / 2, chunkSize / 2), new Vector3(chunkSize, chunkHeight, chunkSize));
@@ -134,22 +143,21 @@ public class TerrainChunk : MonoBehaviour
             triangulation = mapDataGenerator.triangulation1D,
             // Arrays to fill with this job
             triangles = triangles.AsParallelWriter(),
-            vertices = vertices.AsParallelWriter(),
+            vertices = uniqueVertices.AsParallelWriter(),
             chunkSize = chunkSize,
             chunkBorderIncrease = chunkBorderIncrease,
             chunkHeight = chunkHeight,
             threshold = threshold,
-            marchCubeSize = 1
+            marchCubeSize = 4
         };
-
-        JobHandle marchHandle = marchJob.Schedule(generatedMap.Length, 4, mapDataHandle);
+        
+        JobHandle marchHandle = marchJob.Schedule(generatedMap.Length, 100, mapDataHandle);
 
         // Generate Mesh from Marching cube result
         var chunkMeshJob = new ChunkMeshJob()
         {
             triangles = triangles,
-            uniqueVertices = vertices,
-            bounds = bounds,
+            uniqueVertices = uniqueVertices,
             map = generatedMap,
             chunkHeight = chunkHeight,
             chunkSize = chunkSize,
@@ -159,17 +167,21 @@ public class TerrainChunk : MonoBehaviour
         };
 
         var chunkMeshHandle = chunkMeshJob.Schedule(marchHandle);
-        
-        StartCoroutine(ApplyMeshData(mesh, chunkVertices, chunkNormals, chunkTriangles, mc, vertices, triangles, generatedMap, chunkMeshHandle, chunkMeshJob));
+         
+        triangles.Dispose(chunkMeshHandle);
+        uniqueVertices.Dispose(chunkMeshHandle);
+        generatedMap.Dispose(chunkMeshHandle);
+
+        StartCoroutine(ApplyMeshData(mesh, chunkVertices, chunkNormals, chunkTriangles, mc, chunkMeshHandle));
         
         return chunkMeshHandle;
     }
     
-    private IEnumerator ApplyMeshData(Mesh mesh, NativeList<Vector3> verts, NativeList<Vector3> normals, NativeList<int> tris, MeshCollider mc, NativeHashMap<int3, Vector3> vertices, NativeQueue<Triangle> triangles, NativeArray<float> map, JobHandle job, ChunkMeshJob chunkMeshJob)
+    private IEnumerator ApplyMeshData(Mesh mesh, NativeList<Vector3> verts, NativeList<Vector3> normals, NativeList<int> tris, MeshCollider mc, JobHandle job)
     {
         yield return new WaitUntil(() => job.IsCompleted);
         job.Complete();
-
+        
         mesh.SetVertices(verts.ToArray());
         mesh.SetNormals(normals.ToArray());
         mesh.SetTriangles(tris.ToArray(),0);
@@ -184,12 +196,11 @@ public class TerrainChunk : MonoBehaviour
         
         mesh.RecalculateTangents();
 
-        triangles.Dispose(colliderJobHandle);
-        vertices.Dispose(colliderJobHandle);
-        map.Dispose(colliderJobHandle);
+        sampler.Begin();
         verts.Dispose(colliderJobHandle);
         normals.Dispose(colliderJobHandle);
         tris.Dispose(colliderJobHandle);
+        sampler.End();
     }
 
 
@@ -216,7 +227,7 @@ public class TerrainChunk : MonoBehaviour
             try
             {
                 triangles.Dispose();
-                vertices.Dispose();
+                uniqueVertices.Dispose();
             }
             catch (Exception e)
             {
