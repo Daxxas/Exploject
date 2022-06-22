@@ -14,7 +14,7 @@ public struct ChunkMeshJob : IJob
         // Input reference
         public NativeQueue<Triangle> triangles;
         [ReadOnly] [NativeDisableParallelForRestriction]
-        public NativeHashMap<Edge, float3> uniqueVertices;
+        public NativeParallelHashMap<Edge, float3> uniqueVertices;
         [ReadOnly]
         public NativeArray<float> map;
         // Output
@@ -25,8 +25,6 @@ public struct ChunkMeshJob : IJob
 
         public NativeList<Vector3> chunkNormals;
         
-        public int chunkSize;
-        public int chunkHeight;
 
         public void Execute()
         {
@@ -36,14 +34,18 @@ public struct ChunkMeshJob : IJob
             // Since it's not possible to use float as keys in a hashmap,
             // Instead we make a hashmap that stores the indices we already added in the vertices array & where we stored it
             // so if a new triangle references an already placed vertex, we know where it is already in the array
-            NativeHashMap<Edge, int> matchingIndices = new NativeHashMap<Edge, int>(triangles.Count * 3, Allocator.Temp);
+            int supposedVertexCount = triangles.Count * 3;
+            NativeParallelHashMap<Edge, int> matchingIndices = new NativeParallelHashMap<Edge, int>(supposedVertexCount, Allocator.Temp);
             // vertices & triangles arrays 
             
+            NativeList<Vector3> borderVertices = new NativeList<Vector3>(supposedVertexCount, Allocator.Temp);
+            NativeList<int> borderTriangles =   new NativeList<int>(supposedVertexCount, Allocator.Temp);
+
             int chunkVerticesIndices = 0;
+            int borderVerticesIndices = -1;
             
             while (triangles.TryDequeue(out Triangle triangle))
             {
-                
                 // Order is C - B - A to have triangle in the right direction
                 
                 // Logic is :
@@ -55,55 +57,68 @@ public struct ChunkMeshJob : IJob
                 // borderTriangles have a mix of indices from chunkVertices and borderVertices (negative and positive indices)
 
                 // The vertex is in the chunk mesh
-                if (matchingIndices.TryAdd(triangle.vertexIndexC, chunkVerticesIndices))
-                {
-                    // if it's a vertex we don't know, add it to chunkVertices no matter if the vertex comes from
-                    // a border triangle or not.
-                    // If the vertex comes from a border triangle, it's ok, we will find it back through a mesh chunk triangle
-                    chunkVertices.Add(uniqueVertices[triangle.vertexIndexC]);
-                    chunkTriangles.Add(chunkVerticesIndices);
 
-                    chunkVerticesIndices++;
-                }
-                else
+                // For every vertex
+                for (int i = 2; i >= 0; i--)
                 {
-                    // Same logic as commment above
-                    chunkTriangles.Add(matchingIndices[triangle.vertexIndexC]);
-                }
-                
-                // Same logic for vertex B of triangle
-                if (matchingIndices.TryAdd(triangle.vertexIndexB, chunkVerticesIndices))
-                {
-                    chunkVertices.Add(uniqueVertices[triangle.vertexIndexB]);
-                    chunkTriangles.Add(chunkVerticesIndices);
+                    // If the vertex is on the border, meaning it's not in the final mesh
+                    // we try to add it to the matching indicies with the borderVerticesIndices as the matching index of the vertex 
+                    if (triangle.GetIsBorder(i))
+                    {
+                        if (matchingIndices.TryAdd(triangle[i], borderVerticesIndices))
+                        {
+                            // add vertex to borderVertices for futur normal calculation
+                            borderVertices.Add(uniqueVertices[triangle[i]]);
+                            // add vertex index to borderTriangles
+                            borderTriangles.Add(borderVerticesIndices);
+                            // borderVerticesIndices is a negative index, so we decrement it
+                            borderVerticesIndices--;
+                        }
+                        else
+                        {
+                            // Vertex outside of mesh already exists, we only add it to borderTriangles
+                            borderTriangles.Add(matchingIndices[triangle[i]]);
+                        }
+                    }
+                    else
+                    {
+                        // The vertex is in the chunk mesh
+                        if (matchingIndices.TryAdd(triangle[i], chunkVerticesIndices))
+                        {
+                            // if it's a vertex we don't know, add it to chunkVertices no matter if the vertex comes from
+                            // a border triangle or not.
+                            // If the vertex comes from a border triangle, it's ok, it will be part of a triangle through a mesh chunk triangle
+                            chunkVertices.Add(uniqueVertices[triangle[i]]);
 
-                    chunkVerticesIndices++;
+                            if (!triangle.isBorderTriangle)
+                            {
+                                chunkTriangles.Add(chunkVerticesIndices);
+                            }
+                            else
+                            {
+                                // if the triangle we are currently looping through if a triangle in the border
+                                // we add the vertex index to borderTriangles
+                                // This is why borderTriangles contains positive indices 
+                                borderTriangles.Add(chunkVerticesIndices);
+                            }
 
-                }
-                else
-                {
-                    chunkTriangles.Add(matchingIndices[triangle.vertexIndexB]);
-
-                }
-                
-                // Same logic for vertex A of triangle
-                if (matchingIndices.TryAdd(triangle.vertexIndexA, chunkVerticesIndices))
-                {
-                    chunkVertices.Add(uniqueVertices[triangle.vertexIndexA]);
-                    chunkTriangles.Add(chunkVerticesIndices);
-
-                    chunkVerticesIndices++;
-                }
-                else
-                {
-                    chunkTriangles.Add(matchingIndices[triangle.vertexIndexA]);
-
+                            chunkVerticesIndices++;
+                        }
+                        else
+                        {
+                            // Same logic as commment above
+                            if (!triangle.isBorderTriangle)
+                            {
+                                chunkTriangles.Add(matchingIndices[triangle[i]]);
+                            }
+                            else
+                            {
+                                borderTriangles.Add(matchingIndices[triangle[i]]);
+                            }
+                        }
+                    }
                 }
             }
-            
-            // Apply calculated array to mesh data arrays
-            // we don't know in advance the vertices array length, so it's not possible to directly modify the
-            // meshData vertices array
 
 
             // Normal calculation
@@ -114,7 +129,7 @@ public struct ChunkMeshJob : IJob
                 chunkNormals.Add(float3.zero);
             }
 
-            CalculateNormals(chunkVertices.AsArray(), chunkTriangles.AsArray(), chunkNormals);
+            CalculateNormals(chunkVertices.AsArray(), borderVertices.AsArray(), borderTriangles.AsArray(), chunkTriangles.AsArray(), chunkNormals);
             
             // TODO Set UVs somewhere
             
@@ -124,158 +139,71 @@ public struct ChunkMeshJob : IJob
             // borderVertices.Dispose();
         }
 
-        private void CalculateNormals(NativeArray<Vector3> vertices, NativeArray<int> triangles, NativeArray<Vector3> normals)
+        private void CalculateNormals(NativeArray<Vector3> vertices, NativeArray<Vector3> borderVertices, NativeArray<int> borderTriangles, NativeArray<int> triangles, NativeArray<Vector3> normals)
         {
-            // Loop through chunk triangles
-            // for (int i = 0; i < triangles.Length / 3; i++)
-            // {
-            //     int triangleIndex = i * 3;
-            //     int vert0 = triangles[triangleIndex];
-            //     int vert1 = triangles[triangleIndex+1];
-            //     int vert2 = triangles[triangleIndex+2];
-            //     
-            //     // Debug.Log($"vert0 {vert0} | vert1 {vert1} | vert2 {vert2}");
-            //     
-            //     
-            //     // No need to normalize, there's no difference noticed for the moment
-            //     // normalizing create NaN when SurfaceNormal returns a float3(0,0,0) 
-            //     normals[vert0] = SurfaceNormal(vert0, vertices);
-            //     normals[vert1] = SurfaceNormal(vert1, vertices);
-            //     normals[vert2] = SurfaceNormal(vert2, vertices);
-            //
-            //     
-            //     // var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            //     // go.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
-            //     // var np = go.AddComponent<NormalPreview>();
-            //     // np.normal = normals[i];
-            //     // np.normalColor = Color.blue;
-            //     // np.transform.position = vertices[i];
-            // }
-
-            for (int i = 0; i < vertices.Length; i++)
+            // Loop through border triangles
+            for (int i = 0; i < borderTriangles.Length / 3; i++)
             {
-                normals[i] = SurfaceNormal(i, vertices);
-            }
-        }
-
-        float3 SurfaceNormal(int pointIndex, NativeArray<Vector3> vertices)
-        {
-            float3 returnNormal = float3.zero;
-            float3 currentVert = vertices[pointIndex];
-            // var parent = new GameObject(currentVert.ToString());
-            
-            for (int x = -1; x < 2; x++)
-            {
-                for (int y = -1; y < 2; y++)
+                int normalTriangleIndex = i * 3;
+                int vertexIndexA = borderTriangles[normalTriangleIndex];
+                int vertexIndexB = borderTriangles[normalTriangleIndex+1];
+                int vertexIndexC = borderTriangles[normalTriangleIndex+2];
+                
+                Vector3 triangleNormal = SurfaceNormal(vertexIndexA, vertexIndexB, vertexIndexC, vertices, borderVertices);
+                
+                // Only update vertex in the triangle that are in the chunk mesh
+                if (vertexIndexA >= 0)
                 {
-                    for (int z = -1; z < 2; z++)
-                    {
-                        if (!(x == 0 && y == 0 && z == 0))
-                        {
-                            float3 offsetValuePos = new float3(currentVert.x + x, currentVert.y + y, currentVert.z + z);
-                            float3 gradientVec = currentVert - offsetValuePos;
-                            float valueAtOffsetPos = GetInterpolatedValue(offsetValuePos);
-                            
-                            // var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                            // go.transform.parent = parent.transform;
-                            // go.transform.position = offsetValuePos;
-                            // go.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
-                            // go.name = "Cube - " + offsetValuePos + " = " + valueAtOffsetPos;
-                            
-                            if (valueAtOffsetPos > 0)
-                            {
-                                // var np = go.AddComponent<NormalPreview>();
-                                // np.normal = math.normalize(gradientVec * valueAtOffsetPos);
-                                // np.valueAtThisPos = valueAtOffsetPos;
-                                
-                                returnNormal += math.normalize(gradientVec * valueAtOffsetPos);
-                            }
-                            else
-                            {
-                                // Destroy(go);
-                            }
-                        }
-                    }
+                    normals[vertexIndexA] += triangleNormal;
+                }
+                if (vertexIndexB >= 0)
+                {
+                    normals[vertexIndexB] += triangleNormal;
+                }
+                if (vertexIndexC >= 0)
+                {
+                    normals[vertexIndexC] += triangleNormal;
                 }
             }
             
-            return returnNormal;
+            // Loop through chunk triangles
+            for (int i = 0; i < triangles.Length  / 3; i++)
+            {
+                int normalTriangleIndex = i * 3;
+                int vertexIndexA = triangles[normalTriangleIndex];
+                int vertexIndexB = triangles[normalTriangleIndex+1];
+                int vertexIndexC = triangles[normalTriangleIndex+2];
+
+                Vector3 triangleNormal = SurfaceNormal(vertexIndexA, vertexIndexB, vertexIndexC, vertices, borderVertices);
+                // normals are set to 0 beforehand to avoid unpredictable issues
+                normals[vertexIndexA] += triangleNormal;
+                normals[vertexIndexB] += triangleNormal;
+                normals[vertexIndexC] += triangleNormal;
+            }
+            
+            for (int i = 0; i < normals.Length; i++)
+            {
+                math.normalize(normals[i]);
+            }
         }
 
-        private float GetInterpolatedValue(float3 xyz)
+        Vector3 SurfaceNormal(int indexA, int indexB, int indexC, NativeArray<Vector3> vertices, NativeArray<Vector3> borderVertices)
         {
-            int3 xyz0 = ((int3) math.floor(xyz));
-            int3 xyz1 = xyz0 + 1;
-
-            // for (int i = 0; i < 2; i++)
-            // {
-            //     for (int j = 0; j < 2; j++)
-            //     {
-            //         for (int k = 0; k < 2; k++)
-            //         {
-            //             var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            //             go.transform.localScale = new Vector3(0.05f, 0.05f, 0.05f);
-            //             Vector3 finalPos = Vector3.zero;
-            //             if (i == 0)
-            //                 finalPos.x = xyz0.x;
-            //             else
-            //                 finalPos.x = xyz1.x;
-            //
-            //             if (j == 0)
-            //                 finalPos.y = xyz0.y;
-            //             else
-            //                 finalPos.y = xyz1.y;
-            //
-            //             if (k == 0)
-            //                 finalPos.z = xyz0.z;
-            //             else
-            //                 finalPos.z = xyz1.z;
-            //             
-            //             go.transform.parent = parent;
-            //             go.transform.position = finalPos;
-            //             go.name = map[to1D((int3) new float3(finalPos.x, finalPos.y, finalPos.z))].ToString();
-            //             finalPos.x++;
-            //             finalPos.z++;
-            //             // go.AddComponent<NormalPreview>().valueAtThisPos = map[to1D((int) finalPos.x, (int) finalPos.y, (int) finalPos.z)];
-            //
-            //         }
-            //     }
-            // }
+            // Get vertex from the right vertices array based on the index in the triangle
+            // This is the reason why we have negative indices in the triangle array for the border
+            float3 pointA = (indexA < 0) ? borderVertices[-indexA-1] : vertices[indexA];
+            float3 pointB = (indexB < 0) ? borderVertices[-indexB-1] : vertices[indexB];
+            float3 pointC = (indexC < 0) ? borderVertices[-indexC-1] : vertices[indexC];
             
-            // Trilinear interpolation
-            float xd = (xyz.x - xyz0.x) / (xyz1.x - xyz0.x);
-            float yd = (xyz.y - xyz0.y) / (xyz1.y - xyz0.y);
-            float zd = (xyz.z - xyz0.z) / (xyz1.z - xyz0.z);
-
-            NativeArray<float> cXXX = new NativeArray<float>(8 ,Allocator.Temp);
-
-            cXXX[0] = map[to1D(xyz0)];                   // c000
-            cXXX[1] = map[to1D(xyz1.x, xyz0.y, xyz0.z)]; // c100
-            cXXX[2] = map[to1D(xyz0.x, xyz0.y, xyz1.z)]; // c001
-            cXXX[3] = map[to1D(xyz1.x, xyz0.y, xyz1.z)]; // c101
-            cXXX[4] = map[to1D(xyz0.x, xyz1.y, xyz0.z)]; // c010
-            cXXX[5] = map[to1D(xyz1.x, xyz1.y, xyz0.z)]; // c110
-            cXXX[6] = map[to1D(xyz0.x, xyz1.y, xyz1.z)]; // c011
-            cXXX[7] = map[to1D(xyz1)];                   // c111
-            
-            float c00 = cXXX[0] * (1 - xd) + cXXX[1] * xd;
-            float c01 = cXXX[2] * (1 - xd) + cXXX[3] * xd;
-            float c10 = cXXX[4] * (1 - xd) + cXXX[5] * xd;
-            float c11 = cXXX[6] * (1 - xd) + cXXX[7] * xd;
-            
-            float c0 = c00 * (1 - yd) + c10 * yd;
-            float c1 = c01 * (1 - yd) + c11 * yd;
-            
-            float c = c0 * (1 - zd) + c1 * zd;
-
-            return c;
-
+            float3 sideAB = pointB - pointA;
+            float3 sideAC = pointC - pointA;
+            return math.cross(sideAB, sideAC);
         }
-
         
+
         public int to1D( int x, int y, int z)
         {
-            return (x+1) + y*MapDataGenerator.supportedChunkSize + (z+1)*MapDataGenerator.supportedChunkSize*chunkHeight;
+            return (x+1) + y*MapDataGenerator.supportedChunkSize + (z+1)*MapDataGenerator.supportedChunkSize*MapDataGenerator.chunkHeight;
         }
 
         public int to1D(int3 xyz)

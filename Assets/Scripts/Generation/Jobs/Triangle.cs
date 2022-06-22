@@ -5,7 +5,13 @@ public struct Triangle
     public Edge vertexIndexA;
     public Edge vertexIndexB;
     public Edge vertexIndexC;
-        
+
+    public bool isBorderA;
+    public bool isBorderB;
+    public bool isBorderC;
+
+    public bool isBorderTriangle => isBorderA || isBorderB || isBorderC; 
+    
     public Edge this [int i] {
         get {
             switch (i) {
@@ -33,10 +39,43 @@ public struct Triangle
         }
     }
 
-    public Triangle(Edge a, Edge b, Edge c)
+    public bool GetIsBorder(int i)
+    {
+        switch (i)
+        {
+            case 0:
+                return isBorderC;
+            case 1:
+                return isBorderB;
+            default:
+                return isBorderA;
+        }
+    }
+    
+    public void SetEdgeBorder(int i, bool value)
+    {
+        switch (i)
+        {
+            case 0:
+                isBorderC = value;
+                break;
+            case 1:
+                isBorderB = value;
+                break;
+            default:
+                isBorderA = value;
+                break;
+        }
+    }
+
+    public Triangle(Edge a, Edge b, Edge c, bool isBorderA, bool isBorderB, bool isBorderC)
     {
         this.vertexIndexA = a;
         this.vertexIndexB = b;
         this.vertexIndexC = c;
+
+        this.isBorderA = isBorderA;
+        this.isBorderB = isBorderB;
+        this.isBorderC = isBorderC;
     }
 }

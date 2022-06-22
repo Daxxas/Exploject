@@ -22,128 +22,130 @@ public struct MarchCubeJob : IJobParallelFor
         [WriteOnly]
         public NativeQueue<Triangle>.ParallelWriter triangles;
         [WriteOnly]
-        public NativeHashMap<Edge, float3>.ParallelWriter vertices;
+        public NativeParallelHashMap<Edge, float3>.ParallelWriter vertices;
         
-        public int marchCubeSize;
-        public int chunkSize;
-        public int chunkBorderIncrease;
-        public int chunkHeight;
-        public float threshold;
-        private int supportedChunkSize => chunkSize + chunkBorderIncrease;
         
         // job is IJobParallelFor, one index = 1 cube tested
         public void Execute(int idx)
         {
             // Cube currently tested, in array so it's easier to follow
-            NativeArray<MapDataGenerator.CubePoint> marchCube = new NativeArray<MapDataGenerator.CubePoint>(8, Allocator.Temp);
+            NativeArray<CubePoint> marchCube = new NativeArray<CubePoint>(8, Allocator.Temp);
             
             // Remember :
             // Map data generates 18x18 (ignoring height) data to calculate normals
             // Marching will output a vertices array of 18x18 to allow mesh generation to calculate normals
             // but the mesh generation should output a 16x16 vertices array
-            int x = idx % supportedChunkSize;
-            int y = (idx / supportedChunkSize) % chunkHeight;
-            int z = idx / (supportedChunkSize * chunkHeight);
+            int x = idx % MapDataGenerator.supportedChunkSize;
+            int y = (idx / MapDataGenerator.supportedChunkSize) % MapDataGenerator.chunkHeight;
+            int z = idx / (MapDataGenerator.supportedChunkSize * MapDataGenerator.chunkHeight);
 
-            if (x % marchCubeSize != 0 || y % marchCubeSize != 0 || z % marchCubeSize != 0)
+            // Don't calculate when not in Resolution
+            // if (x % MapDataGenerator.resolution != 0 && y % MapDataGenerator.resolution != 0 && z % MapDataGenerator.resolution != 0)
+            // {
+            //     return;
+            // }
+
+            if (x < MapDataGenerator.resolution || z < MapDataGenerator.resolution)
             {
                 return;
             }
             
             // Don't calculate when we are too close to the edge of the chunk to prevent out of bound or if it's useless
-            if (x >= chunkSize || y >= chunkHeight - marchCubeSize || z >= chunkSize)
+            if (x >= MapDataGenerator.ChunkSize+1 || y >= MapDataGenerator.chunkHeight - MapDataGenerator.resolution || z >= MapDataGenerator.ChunkSize+1)
             {
                 return;
             }
             
             // put march cube in array to have cleaner code after
             #region March cube definition 
-            marchCube[0] = new MapDataGenerator.CubePoint()
+            marchCube[0] = new CubePoint()
             {
                 p = new int3(x, y, z),
                 val = map[to1D(x, y, z)]
             };
-            marchCube[1] = new MapDataGenerator.CubePoint()
+            marchCube[1] = new CubePoint()
             {
-                p = new int3(x + marchCubeSize, y, z),
-                val = map[to1D(x + marchCubeSize, y, z)]
+                p = new int3(x + MapDataGenerator.resolution, y, z),
+                val = map[to1D(x + MapDataGenerator.resolution, y, z)]
             };
-            marchCube[2] = new MapDataGenerator.CubePoint()
+            marchCube[2] = new CubePoint()
             {
-                p = new int3(x + marchCubeSize, y, z + marchCubeSize),
-                val = map[to1D(x + marchCubeSize, y, z + marchCubeSize)]
+                p = new int3(x + MapDataGenerator.resolution, y, z + MapDataGenerator.resolution),
+                val = map[to1D(x + MapDataGenerator.resolution, y, z + MapDataGenerator.resolution)]
             };
-            marchCube[3] = new MapDataGenerator.CubePoint()
+            marchCube[3] = new CubePoint()
             {
-                p = new int3(x, y, z + marchCubeSize),
-                val = map[to1D(x, y, z + marchCubeSize)]
+                p = new int3(x, y, z + MapDataGenerator.resolution),
+                val = map[to1D(x, y, z + MapDataGenerator.resolution)]
             };
-            marchCube[4] = new MapDataGenerator.CubePoint()
+            marchCube[4] = new CubePoint()
             {
-                p = new int3(x, y + marchCubeSize, z),
-                val = map[to1D(x, y + marchCubeSize, z)]
+                p = new int3(x, y + MapDataGenerator.resolution, z),
+                val = map[to1D(x, y + MapDataGenerator.resolution, z)]
             };
-            marchCube[5] = new MapDataGenerator.CubePoint()
+            marchCube[5] = new CubePoint()
             {
-                p = new int3(x + marchCubeSize, y + marchCubeSize, z),
-                val = map[to1D(x + marchCubeSize, y + marchCubeSize, z)]
+                p = new int3(x + MapDataGenerator.resolution, y + MapDataGenerator.resolution, z),
+                val = map[to1D(x + MapDataGenerator.resolution, y + MapDataGenerator.resolution, z)]
             };
-            marchCube[6] = new MapDataGenerator.CubePoint()
+            marchCube[6] = new CubePoint()
             {
-                p = new int3(x + marchCubeSize, y + marchCubeSize, z + marchCubeSize),
-                val = map[to1D(x + marchCubeSize, y + marchCubeSize, z + marchCubeSize)]
+                p = new int3(x + MapDataGenerator.resolution, y + MapDataGenerator.resolution, z + MapDataGenerator.resolution),
+                val = map[to1D(x + MapDataGenerator.resolution, y + MapDataGenerator.resolution, z + MapDataGenerator.resolution)]
             };
-            marchCube[7] = new MapDataGenerator.CubePoint()
+            marchCube[7] = new CubePoint()
             {
-                p = new int3(x, y + marchCubeSize, z + marchCubeSize),
-                val = map[to1D(x, y + marchCubeSize, z + marchCubeSize)]
+                p = new int3(x, y + MapDataGenerator.resolution, z + MapDataGenerator.resolution),
+                val = map[to1D(x, y + MapDataGenerator.resolution, z + MapDataGenerator.resolution)]
             };
             #endregion
             
             // From values of the cube corners, find the cube configuration index
             int cubeindex = 0;
-            if (marchCube[0].val < threshold) cubeindex |= 1;
-            if (marchCube[1].val < threshold) cubeindex |= 2;
-            if (marchCube[2].val < threshold) cubeindex |= 4;
-            if (marchCube[3].val < threshold) cubeindex |= 8;
-            if (marchCube[4].val < threshold) cubeindex |= 16;
-            if (marchCube[5].val < threshold) cubeindex |= 32;
-            if (marchCube[6].val < threshold) cubeindex |= 64;
-            if (marchCube[7].val < threshold) cubeindex |= 128;
+            if (marchCube[0].val < MapDataGenerator.threshold) cubeindex |= 1;
+            if (marchCube[1].val < MapDataGenerator.threshold) cubeindex |= 2;
+            if (marchCube[2].val < MapDataGenerator.threshold) cubeindex |= 4;
+            if (marchCube[3].val < MapDataGenerator.threshold) cubeindex |= 8;
+            if (marchCube[4].val < MapDataGenerator.threshold) cubeindex |= 16;
+            if (marchCube[5].val < MapDataGenerator.threshold) cubeindex |= 32;
+            if (marchCube[6].val < MapDataGenerator.threshold) cubeindex |= 64;
+            if (marchCube[7].val < MapDataGenerator.threshold) cubeindex |= 128;
             
             if (cubeindex == 255 || cubeindex == 0) 
                 return;
 
-            unsafe
+            // From the cube configuration, add triangles & vertices to mesh 
+            for (int i = 0; triangulation[cubeindex * 16 + i] != -1; i += 3)
             {
+                Triangle triangle = new Triangle();
                 
-                // From the cube configuration, add triangles & vertices to mesh 
-                for (int i = 0; triangulation[cubeindex * 16 + i] != -1; i += 3)
+                for (int j = 0; j < 3; j++)
                 {
-                    Triangle triangle = new Triangle();
-                        
-                    for (int j = 0; j < 3; j++)
-                    {
-                        int a0 = cornerIndexAFromEdge[triangulation[cubeindex * 16 + i + j]];
-                        int b0 = cornerIndexBFromEdge[triangulation[cubeindex * 16 + i + j]];
-                        Edge edge0 = new Edge(marchCube[a0].p, marchCube[b0].p);
-                        
-                        vertices.TryAdd(new Edge(marchCube[a0].p, marchCube[b0].p), FindVertexPos(threshold,
-                            marchCube[a0].p, marchCube[b0].p, marchCube[a0].val,
-                            marchCube[b0].val));
+                    int a0 = cornerIndexAFromEdge[triangulation[cubeindex * 16 + i + j]];
+                    int b0 = cornerIndexBFromEdge[triangulation[cubeindex * 16 + i + j]];
+                    Edge edge0 = new Edge(marchCube[a0].p, marchCube[b0].p);
 
-                        triangle[j] = edge0;
-                    }
+                    vertices.TryAdd(new Edge(marchCube[a0].p, marchCube[b0].p), FindVertexPos(
+                        marchCube[a0].p, marchCube[b0].p, marchCube[a0].val,
+                        marchCube[b0].val));
+
+                    triangle[j] = edge0;
                     
-                    // Triangles are stored in a queue because we don't know how many triangles we will get & we can write in parallel easily in a queue
-                    triangles.Enqueue(triangle);
+                    // TODO : ça marche pas ici quand la résolution est pas 1
+                    
+                    bool isBordera0 = marchCube[a0].p.x < MapDataGenerator.resolution || marchCube[a0].p.z < MapDataGenerator.resolution || marchCube[a0].p.x >= MapDataGenerator.ChunkSize+(2 * MapDataGenerator.resolution) || marchCube[a0].p.z >= MapDataGenerator.ChunkSize+(2 * MapDataGenerator.resolution);
+                    bool isBorderb0 = marchCube[b0].p.x < MapDataGenerator.resolution || marchCube[b0].p.z < MapDataGenerator.resolution || marchCube[b0].p.x >= MapDataGenerator.ChunkSize+(2 * MapDataGenerator.resolution) || marchCube[b0].p.z >= MapDataGenerator.ChunkSize+(2 * MapDataGenerator.resolution);
+                    triangle.SetEdgeBorder(j, isBordera0 || isBorderb0);
                 }
+                
+                // Triangles are stored in a queue because we don't know how many triangles we will get & we can write in parallel easily in a queue
+                triangles.Enqueue(triangle);
             }
 
             marchCube.Dispose();
         }
         
-        private float3 FindVertexPos(float threshold, float3 p1, float3 p2, float v1val, float v2val)
+        private float3 FindVertexPos(float3 p1, float3 p2, float v1val, float v2val)
         {
 
             if(Mathf.Abs(v1val) < 0.0001)
@@ -162,7 +164,7 @@ public struct MarchCubeJob : IJobParallelFor
             }
             float3 position = new float3(0,0,0);
         
-            float mu = (threshold - v1val) / (v2val - v1val);
+            float mu = (MapDataGenerator.threshold - v1val) / (v2val - v1val);
             position.x = p1.x + mu * (p2.x - p1.x);
             position.y = p1.y + mu * (p2.y - p1.y);
             position.z = p1.z + mu * (p2.z - p1.z);
@@ -171,7 +173,13 @@ public struct MarchCubeJob : IJobParallelFor
         }
         public int to1D( int x, int y, int z)
         {
-            return x + y*supportedChunkSize + z*supportedChunkSize*chunkHeight;
+            return x + y*MapDataGenerator.supportedChunkSize + z*MapDataGenerator.supportedChunkSize*MapDataGenerator.chunkHeight;
+        }
+        
+        public struct CubePoint
+        {
+            public int3 p;
+            public float val;
         }
 
     }
@@ -188,11 +196,15 @@ public struct Edge : IEquatable<Edge>
         return math.all(other.point1 == point1) && math.all(other.point2 == point2);
     }
 
+    public override string ToString()
+    {
+        return "a0: " + point1.ToString() + ", b0: " + point2.ToString();
+    }
+
     public override int GetHashCode()
     {
         int hash = 13;
-        hash = (hash * 7) + point1.GetHashCode();
-        hash = (hash * 7) + point2.GetHashCode();
+        hash = (hash * 7) + (point1.GetHashCode() + point2.GetHashCode());
 
         return hash;
     }

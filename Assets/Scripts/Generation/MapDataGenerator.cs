@@ -20,11 +20,12 @@ public class MapDataGenerator : MonoBehaviour
 {
     public int seed;
     
-    [ShowInInspector] public const int chunkSize = 32;
-    [ShowInInspector] public const int chunkHeight = 128;
+    [ShowInInspector] private const int chunkSize = 24;
+    [ShowInInspector] public const int chunkHeight = 80;
     [ShowInInspector] public const float threshold = 0;
-    public const int chunkBorderIncrease = 4;
-    public static int supportedChunkSize => chunkSize + chunkBorderIncrease;
+    public const int resolution = 6;
+    public static int ChunkSize => chunkSize;
+    public static int supportedChunkSize => (ChunkSize + resolution * 3);
     
     // Chunk representation 
     // 0   1   2   3   4   5   6   7   8   9  10  12  13  14  15  16  17  18
@@ -39,11 +40,6 @@ public class MapDataGenerator : MonoBehaviour
     public NativeArray<int> triangulation1D;
 
     private VanillaFunction vanillaFunction;
-    public struct CubePoint
-    {
-        public int3 p;
-        public float val;
-    }
 
     private void Awake()
     {
@@ -71,15 +67,13 @@ public class MapDataGenerator : MonoBehaviour
     public struct MapDataJob : IJobParallelFor
     {
         // Input data
-        public int supportedChunkSize;
-        public int chunkHeight;
         public float offsetx;
         public float offsetz;
         // Output data
         public NativeArray<float> generatedMap;
 
         // Function reference
-        public VanillaFunction VanillaFunction;
+        public VanillaFunction vanillaFunction;
         
         public void Execute(int idx)
         {
@@ -87,14 +81,18 @@ public class MapDataGenerator : MonoBehaviour
             int y = (idx / supportedChunkSize) % chunkHeight;
             int z = idx / (supportedChunkSize * chunkHeight);
 
-            // Since it's a IJobParallelFor, job is called for every idx, filling the generatedMap in parallel
-            generatedMap[idx] = VanillaFunction.GetResult(x + (offsetx), y, z + (offsetz));
+            if (x % resolution == 0 && y % resolution == 0 && z % resolution == 0)
+            {
+                // Since it's a IJobParallelFor, job is called for every idx, filling the generatedMap in parallel
+                generatedMap[idx] = vanillaFunction.GetResult(x + (offsetx), y, z + (offsetz));
+            }
+            else
+            {
+                generatedMap[idx] = math.NAN;
+            }
         }
     }
     
-    
-
-
     public JobHandle GenerateMapData(Vector2 offset, NativeArray<float> generatedMap)
     {
         // Job to generate input map data for marching cube
@@ -103,9 +101,7 @@ public class MapDataGenerator : MonoBehaviour
             // Inputs
             offsetx = offset.x,
             offsetz = offset.y,
-            chunkHeight = chunkHeight,
-            supportedChunkSize = supportedChunkSize,
-            VanillaFunction = vanillaFunction,
+            vanillaFunction = vanillaFunction,
             // Output data
             generatedMap = generatedMap
         };

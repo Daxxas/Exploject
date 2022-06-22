@@ -14,17 +14,9 @@ public class EndlessTerrain : MonoBehaviour
     [SerializeField] private Transform mapParent;
     
     [ShowInInspector] public static Vector2 viewerPosition;
-    private int chunkSize;
-    private int chunkHeight;
 
     private Dictionary<Vector2, TerrainChunk> terrainChunkDic = new Dictionary<Vector2, TerrainChunk>();
     private List<TerrainChunk> terrainChunksVisibleLastUpdate = new List<TerrainChunk>();
-    private void Start()
-    {
-        chunkSize = MapDataGenerator.chunkSize; 
-        chunkHeight = MapDataGenerator.chunkHeight; 
-        // Debug.Log($"chunksVisibleInViewDst: {chunksVisibleInViewDst}");
-    }
 
     private void Update()
     {
@@ -41,8 +33,8 @@ public class EndlessTerrain : MonoBehaviour
         }
         terrainChunksVisibleLastUpdate.Clear();
 
-        int currentChunkCoordX = Mathf.RoundToInt(viewerPosition.x / chunkSize);
-        int currentChunkCoordZ = Mathf.RoundToInt(viewerPosition.y / chunkSize);
+        int currentChunkCoordX = Mathf.RoundToInt(viewerPosition.x / MapDataGenerator.ChunkSize);
+        int currentChunkCoordZ = Mathf.RoundToInt(viewerPosition.y / MapDataGenerator.ChunkSize);
 
         for (int zOffset = -chunkViewDistance; zOffset <= chunkViewDistance ; zOffset++)
         {
@@ -52,7 +44,7 @@ public class EndlessTerrain : MonoBehaviour
                 
                 if (terrainChunkDic.ContainsKey(viewedChunkCoord))
                 {
-                    terrainChunkDic[viewedChunkCoord].UpdateChunkVisibility(chunkViewDistance * MapDataGenerator.chunkSize, viewerPosition);
+                    terrainChunkDic[viewedChunkCoord].UpdateChunkVisibility(chunkViewDistance * MapDataGenerator.ChunkSize, viewerPosition);
                     if (terrainChunkDic[viewedChunkCoord].IsVisible())
                     {
                         terrainChunksVisibleLastUpdate.Add(terrainChunkDic[viewedChunkCoord]);
