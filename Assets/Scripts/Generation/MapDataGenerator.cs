@@ -21,7 +21,7 @@ public class MapDataGenerator : MonoBehaviour
     public int seed;
     
     [ShowInInspector] private const int chunkSize = 24;
-    [ShowInInspector] public const int chunkHeight = 80;
+    [ShowInInspector] public const int chunkHeight = 128;
     [ShowInInspector] public const float threshold = 0;
     public const int resolution = 6;
     public static int ChunkSize => chunkSize;
@@ -99,8 +99,8 @@ public class MapDataGenerator : MonoBehaviour
         var mapDataJob = new MapDataJob()
         {
             // Inputs
-            offsetx = offset.x,
-            offsetz = offset.y,
+            offsetx = offset.x-resolution,
+            offsetz = offset.y-resolution,
             vanillaFunction = vanillaFunction,
             // Output data
             generatedMap = generatedMap

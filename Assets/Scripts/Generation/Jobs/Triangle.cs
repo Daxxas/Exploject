@@ -39,6 +39,24 @@ public struct Triangle
         }
     }
 
+    public bool BorderFromEdge(Edge edge)
+    {
+        if (edge.Equals(vertexIndexA))
+        {
+            return isBorderA;
+        }
+        if (edge.Equals(vertexIndexB))
+        {
+            return isBorderB;
+        }
+        if (edge.Equals(vertexIndexC))
+        {
+            return isBorderC;
+        }
+
+        return false;
+    }
+    
     public bool GetIsBorder(int i)
     {
         switch (i)

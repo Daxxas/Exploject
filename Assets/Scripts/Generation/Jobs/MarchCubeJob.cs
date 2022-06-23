@@ -44,14 +44,10 @@ public struct MarchCubeJob : IJobParallelFor
             // {
             //     return;
             // }
-
-            if (x < MapDataGenerator.resolution || z < MapDataGenerator.resolution)
-            {
-                return;
-            }
+            
             
             // Don't calculate when we are too close to the edge of the chunk to prevent out of bound or if it's useless
-            if (x >= MapDataGenerator.ChunkSize+1 || y >= MapDataGenerator.chunkHeight - MapDataGenerator.resolution || z >= MapDataGenerator.ChunkSize+1)
+            if (x > MapDataGenerator.ChunkSize+MapDataGenerator.resolution || y >= MapDataGenerator.chunkHeight - MapDataGenerator.resolution || z > MapDataGenerator.ChunkSize+MapDataGenerator.resolution)
             {
                 return;
             }
@@ -127,14 +123,16 @@ public struct MarchCubeJob : IJobParallelFor
 
                     vertices.TryAdd(new Edge(marchCube[a0].p, marchCube[b0].p), FindVertexPos(
                         marchCube[a0].p, marchCube[b0].p, marchCube[a0].val,
-                        marchCube[b0].val));
+                        marchCube[b0].val) - new float3(MapDataGenerator.resolution, MapDataGenerator.resolution, MapDataGenerator.resolution));
 
                     triangle[j] = edge0;
                     
                     // TODO : ça marche pas ici quand la résolution est pas 1
                     
-                    bool isBordera0 = marchCube[a0].p.x < MapDataGenerator.resolution || marchCube[a0].p.z < MapDataGenerator.resolution || marchCube[a0].p.x >= MapDataGenerator.ChunkSize+(2 * MapDataGenerator.resolution) || marchCube[a0].p.z >= MapDataGenerator.ChunkSize+(2 * MapDataGenerator.resolution);
-                    bool isBorderb0 = marchCube[b0].p.x < MapDataGenerator.resolution || marchCube[b0].p.z < MapDataGenerator.resolution || marchCube[b0].p.x >= MapDataGenerator.ChunkSize+(2 * MapDataGenerator.resolution) || marchCube[b0].p.z >= MapDataGenerator.ChunkSize+(2 * MapDataGenerator.resolution);
+                    bool isBordera0 = marchCube[a0].p.x < MapDataGenerator.resolution || marchCube[a0].p.z < MapDataGenerator.resolution || 
+                                      marchCube[a0].p.x > MapDataGenerator.ChunkSize+(MapDataGenerator.resolution) || marchCube[a0].p.z > MapDataGenerator.ChunkSize+(MapDataGenerator.resolution);
+                    bool isBorderb0 = marchCube[b0].p.x < MapDataGenerator.resolution || marchCube[b0].p.z < MapDataGenerator.resolution ||
+                                      marchCube[b0].p.x > MapDataGenerator.ChunkSize+(MapDataGenerator.resolution) || marchCube[b0].p.z > MapDataGenerator.ChunkSize+(MapDataGenerator.resolution);
                     triangle.SetEdgeBorder(j, isBordera0 || isBorderb0);
                 }
                 
@@ -193,7 +191,7 @@ public struct Edge : IEquatable<Edge>
 
     public bool Equals(Edge other)
     {
-        return math.all(other.point1 == point1) && math.all(other.point2 == point2);
+        return math.all(other.point1 == point1) && math.all(other.point2 == point2) || math.all(other.point1 == point2) && math.all(other.point2 == point1) ;
     }
 
     public override string ToString()
@@ -203,8 +201,7 @@ public struct Edge : IEquatable<Edge>
 
     public override int GetHashCode()
     {
-        int hash = 13;
-        hash = (hash * 7) + (point1.GetHashCode() + point2.GetHashCode());
+        int hash = point1.GetHashCode() + point2.GetHashCode();
 
         return hash;
     }

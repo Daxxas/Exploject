@@ -117,8 +117,6 @@ public class TerrainChunk : MonoBehaviour
         NativeList<int> chunkTriangles = new NativeList<int>(Allocator.TempJob);
         NativeList<Vector3> chunkVertices = new NativeList<Vector3>(Allocator.TempJob);
         NativeList<Vector3> chunkNormals = new NativeList<Vector3>(Allocator.TempJob);
-
-        Debug.Log("Chunk size before bounds = " + MapDataGenerator.ChunkSize);
         
         // Generate mesh object with its components
         bounds = new Bounds(new Vector3(((float) MapDataGenerator.ChunkSize) / 2, ((float) MapDataGenerator.chunkHeight)  / 2, ((float) MapDataGenerator.ChunkSize) / 2), 
@@ -148,7 +146,7 @@ public class TerrainChunk : MonoBehaviour
         JobHandle marchHandle = marchJob.Schedule(generatedMap.Length, 100, mapDataHandle);
 
         // marchHandle.Complete();
-        
+        //
         // DebugData(generatedMap); 
         // DebugTriangles(triangles.ToArray(Allocator.Persistent), uniqueVertices); 
         
@@ -230,8 +228,8 @@ public class TerrainChunk : MonoBehaviour
                 {
                     var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                     sphere.GetComponent<MeshRenderer>().material.color = Color.blue;
-                    sphere.transform.position = new Vector3(x, y, z);
-                    sphere.transform.localScale = new Vector3(0.1f,0.1f,0.1f);
+                    sphere.transform.position = new Vector3(x-MapDataGenerator.resolution, y-MapDataGenerator.resolution, z-MapDataGenerator.resolution);
+                    sphere.transform.localScale = new Vector3(0.25f,0.25f,0.25f);
                     sphere.name = new Vector3(x,y,z).ToString();
                     sphere.transform.parent = g.transform;
                 }
@@ -263,9 +261,15 @@ public class TerrainChunk : MonoBehaviour
         {
             var c = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             c.transform.position = new Vector3(vertex.Value.x, vertex.Value.y, vertex.Value.z) + new Vector3(position.x, 0, position.y);
-            c.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+            c.transform.localScale = new Vector3(0.25f, 0.25f, 0.25f);
             c.transform.parent = g.transform;
-            c.gameObject.name = vertex.Key.ToString();
+            c.gameObject.name = vertex.Key.ToString() + " : " + vertex.Key.GetHashCode();
+
+            if (Array.Exists(triangles.ToArray(), triangle => triangle.BorderFromEdge(vertex.Key)))
+            {
+                c.GetComponent<MeshRenderer>().material.color = Color.red;
+            }
+
         }
     }
     
