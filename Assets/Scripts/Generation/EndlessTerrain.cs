@@ -53,7 +53,7 @@ public class EndlessTerrain : MonoBehaviour
                 else
                 {
                     var instantiatedChunk = Instantiate(chunkObject);
-                    terrainChunkDic.Add(viewedChunkCoord, instantiatedChunk.GetComponent<TerrainChunk>().InitChunk(viewedChunkCoord, dataGenerator, mapParent));
+                    terrainChunkDic.Add(viewedChunkCoord, instantiatedChunk.GetComponent<TerrainChunk>().InitChunk(viewedChunkCoord, dataGenerator, mapParent, dataGenerator.resolution));
                 }
             }
         }

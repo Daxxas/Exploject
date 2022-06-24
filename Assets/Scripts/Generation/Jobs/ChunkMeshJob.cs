@@ -24,8 +24,11 @@ public struct ChunkMeshJob : IJob
         public NativeList<int> chunkTriangles;
 
         public NativeList<Vector3> chunkNormals;
-        
 
+        public int resolution;
+        public int supportedChunkSize => MapDataGenerator.ChunkSize + resolution * 3;
+        
+        
         public void Execute()
         {
             
@@ -203,7 +206,7 @@ public struct ChunkMeshJob : IJob
 
         public int to1D( int x, int y, int z)
         {
-            return (x+1) + y*MapDataGenerator.supportedChunkSize + (z+1)*MapDataGenerator.supportedChunkSize*MapDataGenerator.chunkHeight;
+            return (x+1) + y*supportedChunkSize + (z+1)*supportedChunkSize*MapDataGenerator.chunkHeight;
         }
 
         public int to1D(int3 xyz)

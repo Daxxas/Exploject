@@ -23,9 +23,9 @@ public class MapDataGenerator : MonoBehaviour
     [ShowInInspector] private const int chunkSize = 24;
     [ShowInInspector] public const int chunkHeight = 128;
     [ShowInInspector] public const float threshold = 0;
-    public const int resolution = 6;
+    [ShowInInspector] public int resolution = 6;
     public static int ChunkSize => chunkSize;
-    public static int supportedChunkSize => (ChunkSize + resolution * 3);
+    public int supportedChunkSize => ChunkSize + resolution * 3;
     
     // Chunk representation 
     // 0   1   2   3   4   5   6   7   8   9  10  12  13  14  15  16  17  18
@@ -69,11 +69,16 @@ public class MapDataGenerator : MonoBehaviour
         // Input data
         public float offsetx;
         public float offsetz;
+
+        public int resolution;
         // Output data
         public NativeArray<float> generatedMap;
 
         // Function reference
         public VanillaFunction vanillaFunction;
+        
+        public int supportedChunkSize => ChunkSize + resolution * 3;
+
         
         public void Execute(int idx)
         {
@@ -102,6 +107,7 @@ public class MapDataGenerator : MonoBehaviour
             offsetx = offset.x-resolution,
             offsetz = offset.y-resolution,
             vanillaFunction = vanillaFunction,
+            resolution = resolution,
             // Output data
             generatedMap = generatedMap
         };
@@ -109,11 +115,6 @@ public class MapDataGenerator : MonoBehaviour
         JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 100);
         
         return mapDataHandle;
-    }
-    
-    public static int to1D(int3 xyz)
-    {
-        return xyz.x + xyz.y*supportedChunkSize + xyz.z*supportedChunkSize*chunkHeight;
     }
 }
 

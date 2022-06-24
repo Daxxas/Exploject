@@ -23,7 +23,10 @@ public struct MarchCubeJob : IJobParallelFor
         public NativeQueue<Triangle>.ParallelWriter triangles;
         [WriteOnly]
         public NativeParallelHashMap<Edge, float3>.ParallelWriter vertices;
-        
+
+        public int resolution;
+
+        public int supportedChunkSize => MapDataGenerator.ChunkSize + resolution * 3;
         
         // job is IJobParallelFor, one index = 1 cube tested
         public void Execute(int idx)
@@ -35,9 +38,9 @@ public struct MarchCubeJob : IJobParallelFor
             // Map data generates 18x18 (ignoring height) data to calculate normals
             // Marching will output a vertices array of 18x18 to allow mesh generation to calculate normals
             // but the mesh generation should output a 16x16 vertices array
-            int x = idx % MapDataGenerator.supportedChunkSize;
-            int y = (idx / MapDataGenerator.supportedChunkSize) % MapDataGenerator.chunkHeight;
-            int z = idx / (MapDataGenerator.supportedChunkSize * MapDataGenerator.chunkHeight);
+            int x = idx % supportedChunkSize;
+            int y = (idx / supportedChunkSize) % MapDataGenerator.chunkHeight;
+            int z = idx / (supportedChunkSize * MapDataGenerator.chunkHeight);
 
             // Don't calculate when not in Resolution
             // if (x % MapDataGenerator.resolution != 0 && y % MapDataGenerator.resolution != 0 && z % MapDataGenerator.resolution != 0)
@@ -47,7 +50,7 @@ public struct MarchCubeJob : IJobParallelFor
             
             
             // Don't calculate when we are too close to the edge of the chunk to prevent out of bound or if it's useless
-            if (x > MapDataGenerator.ChunkSize+MapDataGenerator.resolution || y >= MapDataGenerator.chunkHeight - MapDataGenerator.resolution || z > MapDataGenerator.ChunkSize+MapDataGenerator.resolution)
+            if (x > MapDataGenerator.ChunkSize+resolution || y >= MapDataGenerator.chunkHeight - resolution || z > MapDataGenerator.ChunkSize+resolution)
             {
                 return;
             }
@@ -61,38 +64,38 @@ public struct MarchCubeJob : IJobParallelFor
             };
             marchCube[1] = new CubePoint()
             {
-                p = new int3(x + MapDataGenerator.resolution, y, z),
-                val = map[to1D(x + MapDataGenerator.resolution, y, z)]
+                p = new int3(x + resolution, y, z),
+                val = map[to1D(x + resolution, y, z)]
             };
             marchCube[2] = new CubePoint()
             {
-                p = new int3(x + MapDataGenerator.resolution, y, z + MapDataGenerator.resolution),
-                val = map[to1D(x + MapDataGenerator.resolution, y, z + MapDataGenerator.resolution)]
+                p = new int3(x + resolution, y, z + resolution),
+                val = map[to1D(x + resolution, y, z + resolution)]
             };
             marchCube[3] = new CubePoint()
             {
-                p = new int3(x, y, z + MapDataGenerator.resolution),
-                val = map[to1D(x, y, z + MapDataGenerator.resolution)]
+                p = new int3(x, y, z + resolution),
+                val = map[to1D(x, y, z + resolution)]
             };
             marchCube[4] = new CubePoint()
             {
-                p = new int3(x, y + MapDataGenerator.resolution, z),
-                val = map[to1D(x, y + MapDataGenerator.resolution, z)]
+                p = new int3(x, y + resolution, z),
+                val = map[to1D(x, y + resolution, z)]
             };
             marchCube[5] = new CubePoint()
             {
-                p = new int3(x + MapDataGenerator.resolution, y + MapDataGenerator.resolution, z),
-                val = map[to1D(x + MapDataGenerator.resolution, y + MapDataGenerator.resolution, z)]
+                p = new int3(x + resolution, y + resolution, z),
+                val = map[to1D(x + resolution, y + resolution, z)]
             };
             marchCube[6] = new CubePoint()
             {
-                p = new int3(x + MapDataGenerator.resolution, y + MapDataGenerator.resolution, z + MapDataGenerator.resolution),
-                val = map[to1D(x + MapDataGenerator.resolution, y + MapDataGenerator.resolution, z + MapDataGenerator.resolution)]
+                p = new int3(x + resolution, y + resolution, z + resolution),
+                val = map[to1D(x + resolution, y + resolution, z + resolution)]
             };
             marchCube[7] = new CubePoint()
             {
-                p = new int3(x, y + MapDataGenerator.resolution, z + MapDataGenerator.resolution),
-                val = map[to1D(x, y + MapDataGenerator.resolution, z + MapDataGenerator.resolution)]
+                p = new int3(x, y + resolution, z + resolution),
+                val = map[to1D(x, y + resolution, z + resolution)]
             };
             #endregion
             
@@ -123,16 +126,15 @@ public struct MarchCubeJob : IJobParallelFor
 
                     vertices.TryAdd(new Edge(marchCube[a0].p, marchCube[b0].p), FindVertexPos(
                         marchCube[a0].p, marchCube[b0].p, marchCube[a0].val,
-                        marchCube[b0].val) - new float3(MapDataGenerator.resolution, MapDataGenerator.resolution, MapDataGenerator.resolution));
+                        marchCube[b0].val) - new float3(resolution, resolution, resolution));
 
                     triangle[j] = edge0;
                     
-                    // TODO : ça marche pas ici quand la résolution est pas 1
-                    
-                    bool isBordera0 = marchCube[a0].p.x < MapDataGenerator.resolution || marchCube[a0].p.z < MapDataGenerator.resolution || 
-                                      marchCube[a0].p.x > MapDataGenerator.ChunkSize+(MapDataGenerator.resolution) || marchCube[a0].p.z > MapDataGenerator.ChunkSize+(MapDataGenerator.resolution);
-                    bool isBorderb0 = marchCube[b0].p.x < MapDataGenerator.resolution || marchCube[b0].p.z < MapDataGenerator.resolution ||
-                                      marchCube[b0].p.x > MapDataGenerator.ChunkSize+(MapDataGenerator.resolution) || marchCube[b0].p.z > MapDataGenerator.ChunkSize+(MapDataGenerator.resolution);
+                    // Determine if vertex is border
+                    bool isBordera0 = marchCube[a0].p.x < resolution || marchCube[a0].p.z < resolution || 
+                                      marchCube[a0].p.x > MapDataGenerator.ChunkSize+(resolution) || marchCube[a0].p.z > MapDataGenerator.ChunkSize+(resolution);
+                    bool isBorderb0 = marchCube[b0].p.x < resolution || marchCube[b0].p.z < resolution ||
+                                      marchCube[b0].p.x > MapDataGenerator.ChunkSize+(resolution) || marchCube[b0].p.z > MapDataGenerator.ChunkSize+(resolution);
                     triangle.SetEdgeBorder(j, isBordera0 || isBorderb0);
                 }
                 
@@ -171,7 +173,7 @@ public struct MarchCubeJob : IJobParallelFor
         }
         public int to1D( int x, int y, int z)
         {
-            return x + y*MapDataGenerator.supportedChunkSize + z*MapDataGenerator.supportedChunkSize*MapDataGenerator.chunkHeight;
+            return x + y*supportedChunkSize + z*supportedChunkSize*MapDataGenerator.chunkHeight;
         }
         
         public struct CubePoint
