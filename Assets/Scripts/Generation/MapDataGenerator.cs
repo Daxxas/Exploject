@@ -20,11 +20,12 @@ public class MapDataGenerator : MonoBehaviour
 {
     public int seed;
     
-    [ShowInInspector] public const int chunkSize = 30;
+    [ShowInInspector] private const int chunkSize = 24;
     [ShowInInspector] public const int chunkHeight = 128;
     [ShowInInspector] public const float threshold = 0;
-    public const int chunkBorderIncrease = 5;
-    public static int supportedChunkSize => chunkSize + chunkBorderIncrease;
+    [ShowInInspector] public int resolution = 6;
+    public static int ChunkSize => chunkSize;
+    public int supportedChunkSize => ChunkSize + resolution * 3;
     
     // Chunk representation 
     // 0   1   2   3   4   5   6   7   8   9  10  12  13  14  15  16  17  18
@@ -39,11 +40,6 @@ public class MapDataGenerator : MonoBehaviour
     public NativeArray<int> triangulation1D;
 
     private VanillaFunction vanillaFunction;
-    public struct CubePoint
-    {
-        public int3 p;
-        public float val;
-    }
 
     private void Awake()
     {
@@ -71,15 +67,18 @@ public class MapDataGenerator : MonoBehaviour
     public struct MapDataJob : IJobParallelFor
     {
         // Input data
-        public int supportedChunkSize;
-        public int chunkHeight;
         public float offsetx;
         public float offsetz;
+
+        public int resolution;
         // Output data
         public NativeArray<float> generatedMap;
 
         // Function reference
-        public VanillaFunction VanillaFunction;
+        public VanillaFunction vanillaFunction;
+        
+        public int supportedChunkSize => ChunkSize + resolution * 3;
+
         
         public void Execute(int idx)
         {
@@ -87,66 +86,35 @@ public class MapDataGenerator : MonoBehaviour
             int y = (idx / supportedChunkSize) % chunkHeight;
             int z = idx / (supportedChunkSize * chunkHeight);
 
-            // Since it's a IJobParallelFor, job is called for every idx, filling the generatedMap in parallel
-            generatedMap[idx] = VanillaFunction.GetResult(x + (offsetx), y, z + (offsetz));
+            if (x % resolution == 0 && y % resolution == 0 && z % resolution == 0)
+            {
+                // Since it's a IJobParallelFor, job is called for every idx, filling the generatedMap in parallel
+                generatedMap[idx] = vanillaFunction.GetResult(x + (offsetx), y, z + (offsetz));
+            }
+            else
+            {
+                generatedMap[idx] = math.NAN;
+            }
         }
     }
     
-    
-
-
     public JobHandle GenerateMapData(Vector2 offset, NativeArray<float> generatedMap)
     {
         // Job to generate input map data for marching cube
         var mapDataJob = new MapDataJob()
         {
             // Inputs
-            offsetx = offset.x,
-            offsetz = offset.y,
-            chunkHeight = chunkHeight,
-            supportedChunkSize = supportedChunkSize,
-            VanillaFunction = vanillaFunction,
+            offsetx = offset.x-resolution,
+            offsetz = offset.y-resolution,
+            vanillaFunction = vanillaFunction,
+            resolution = resolution,
             // Output data
             generatedMap = generatedMap
         };
         
-        JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 4);
+        JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 100);
         
         return mapDataHandle;
-    }
-    
-    // Call to visualize vertices positions
-    public void DebugChunks(NativeHashMap<int3, float3> vertices,Vector2 offset)
-    {
-        var g = new GameObject("Info of " + offset.x + " " + offset.y);
-        
-        var vertexKeyValues = vertices.GetKeyValueArrays(Allocator.Persistent);
-        var vertex = vertexKeyValues.Values;
-        var vertexIndex = vertexKeyValues.Keys;
-        
-        for (int i = 0; i < vertexIndex.Length; i++)
-        {
-        
-            var tmp = new GameObject();
-            var tmpc = tmp.AddComponent<TextMeshPro>();
-            tmpc.text = vertexIndex.ToString();
-            tmpc.fontSize = 0.5f;
-            tmpc.alignment = TextAlignmentOptions.Midline;
-            
-            var c = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            c.transform.position = new Vector3(vertex[i].x + offset.x, vertex[i].y, offset.y + vertex[i].z);
-            c.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
-            c.transform.parent = g.transform;
-            tmp.transform.parent = c.transform;
-            tmp.transform.localPosition = new Vector3(0, 0.5f, 0);
-        }
-
-        vertexKeyValues.Dispose();
-    }
-    
-    public static int to1D(int3 xyz)
-    {
-        return xyz.x + xyz.y*supportedChunkSize + xyz.z*supportedChunkSize*chunkHeight;
     }
 }
 

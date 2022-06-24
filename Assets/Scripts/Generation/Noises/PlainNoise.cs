@@ -8,7 +8,7 @@
         noise.SetFractalType(FastNoiseLite.FractalType.FBm);
         noise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
         noise.SetFrequency(0.0075f);
-        noise.SetFractalOctaves(6);
+        noise.SetFractalOctaves(4);
     }
 
     public float GetNoise(float x, float y)
