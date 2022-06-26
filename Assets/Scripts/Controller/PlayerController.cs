@@ -47,8 +47,8 @@ public class PlayerController : MonoBehaviour, ICharacterController
     public void UpdateVelocity(ref Vector3 currentVelocity, float deltaTime)
     {
         
-        currentVelocity = transform.forward * inputProvider.MoveDirection.y * speed * Time.deltaTime;
-        currentVelocity += transform.right * inputProvider.MoveDirection.x * speed * Time.deltaTime;
+        currentVelocity = transform.forward * (inputProvider.MoveDirection.y * speed * Time.deltaTime);
+        currentVelocity += transform.right * (inputProvider.MoveDirection.x * speed * Time.deltaTime);
 
         // currentVelocity.y += -(gravity * Time.deltaTime);
     }

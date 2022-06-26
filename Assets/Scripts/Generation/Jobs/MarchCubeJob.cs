@@ -5,6 +5,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
+using Unity.VisualScripting;
 using UnityEngine;
 
 // Second job to be called from CreateChunk after map data is generated
@@ -25,7 +26,7 @@ public struct MarchCubeJob : IJobParallelFor
         public NativeParallelHashMap<Edge, float3>.ParallelWriter vertices;
 
         public int resolution;
-
+        
         public int supportedChunkSize => MapDataGenerator.ChunkSize + resolution * 3;
         
         // job is IJobParallelFor, one index = 1 cube tested

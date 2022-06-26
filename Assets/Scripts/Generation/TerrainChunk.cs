@@ -25,27 +25,28 @@ public class TerrainChunk : MonoBehaviour
 
     private MapDataGenerator mapDataGenerator;
     private Vector2 position;
-    private Bounds bounds;
-    private bool isInit = false;
+    public Vector2 Position => position;
 
+    private Bounds bounds;
+    
     private int resolution;
     private int supportedChunkSize => MapDataGenerator.ChunkSize + resolution * 3;
 
-    
-    private CustomSampler sampler;
+    public JobHandle chunkMeshJob;
+    public JobHandle marchHandle;
 
-    private void Start()
-    {
-        sampler = CustomSampler.Create("TerrainChunk");
-    }
+    private bool safeToRemove = false;
+    private bool removeRequest = false;
+    public bool SafeToRemove => safeToRemove;
 
-    public TerrainChunk InitChunk(Vector2 coord, MapDataGenerator dataGenerator, Transform mapParent, int resolution)
+    // TODO : Dynamic LOD System
+    [SerializeField] private GameObject chunkLOD1;
+
+    public TerrainChunk InitChunk(Vector2 coord, MapDataGenerator dataGenerator, int resolution)
     {
         mapDataGenerator = dataGenerator;
         position = coord * MapDataGenerator.ChunkSize;
-        gameObject.name = "Chunk Terrain " + coord.x + " " + coord.y;
         
-        transform.parent = mapParent;
         transform.position = new Vector3(position.x, 0, position.y);
 
         this.resolution = resolution;
@@ -55,44 +56,26 @@ public class TerrainChunk : MonoBehaviour
 
         var mapDataHandle = mapDataGenerator.GenerateMapData(position, generatedMap);
 
-        GenerateChunkMesh(generatedMap, mapDataHandle);
-        
-        SetVisible(false);
+        chunkMeshJob = GenerateChunkMesh(generatedMap, mapDataHandle);
         
         return this;
     }
-
-
-    public void UpdateChunkVisibility(float maxViewDst, Vector2 viewerPosition)
+    
+    
+    public void UpdateChunk(float maxViewDst, Vector2 viewerPosition)
     {
-        Vector3 transposedViewerPosition = new Vector3(viewerPosition.x, MapDataGenerator.chunkHeight / 2, viewerPosition.y) -
-                      transform.position;
+        Vector3 transposedViewerPosition = new Vector3(viewerPosition.x, MapDataGenerator.chunkHeight / 2, viewerPosition.y);
         
         float viewerDistanceFromNearEdge = Mathf.Sqrt(bounds.SqrDistance(transposedViewerPosition));
         
-        bool visible = viewerDistanceFromNearEdge <= maxViewDst;
+        bool visible = viewerDistanceFromNearEdge <= maxViewDst * MapDataGenerator.ChunkSize;
         SetVisible(visible);
     }
 
     public void SetVisible(bool visible)
     {
-        // Disabling object stops coroutine
-        // which can be dangerous a coroutine waiting for jobs to finish to Dipose arrays
-        if (isInit)
-        {
-            gameObject.SetActive(visible);
-        }
-        else
-        {
-            StartCoroutine(WaitForInitBeforeVisible(visible));
-        }
+        chunkLOD1.SetActive(visible);
         
-    }
-
-    private IEnumerator WaitForInitBeforeVisible(bool visible)
-    {
-        yield return new WaitUntil(() => isInit);
-        SetVisible(visible);
     }
 
     public bool IsVisible()
@@ -100,25 +83,13 @@ public class TerrainChunk : MonoBehaviour
         return gameObject.activeSelf;
     }
 
-
-    [ContextMenu("Unity recalculate normal")]
-    public void DebugRecalculateNormals()
-    {
-        mf.mesh.RecalculateNormals();
-    }
-    
     //////////////////////////////////////////////////////////////////
     // Jobs
     //////////////////////////////////////////////////////////////////
-    
-    private NativeQueue<Triangle> triangles;
-    private NativeParallelHashMap<Edge, float3> uniqueVertices;
-    private Mesh.MeshDataArray meshDataArray;
-    
     public JobHandle GenerateChunkMesh(NativeArray<float> generatedMap, JobHandle mapDataHandle)
     {
-        triangles = new NativeQueue<Triangle>(Allocator.TempJob);
-        uniqueVertices = new NativeParallelHashMap<Edge, float3>((MapDataGenerator.chunkHeight * supportedChunkSize * supportedChunkSize), Allocator.Persistent);
+        NativeQueue<Triangle> triangles = new NativeQueue<Triangle>(Allocator.TempJob);
+        NativeParallelHashMap<Edge, float3> uniqueVertices = new NativeParallelHashMap<Edge, float3>((MapDataGenerator.chunkHeight * supportedChunkSize * supportedChunkSize), Allocator.Persistent);
 
         NativeList<int> chunkTriangles = new NativeList<int>(Allocator.TempJob);
         NativeList<Vector3> chunkVertices = new NativeList<Vector3>(Allocator.TempJob);
@@ -132,7 +103,6 @@ public class TerrainChunk : MonoBehaviour
         Mesh mesh = new Mesh();
 
         mf.sharedMesh = mesh;
-        mc.sharedMesh = mesh;
         mr.material = meshMaterial;
 
         // Start marching cube based on a map data
@@ -142,15 +112,15 @@ public class TerrainChunk : MonoBehaviour
             map = generatedMap,
             resolution = resolution,
             // March table 
-            cornerIndexAFromEdge = mapDataGenerator.cornerIndexAFromEdge,
-            cornerIndexBFromEdge = mapDataGenerator.cornerIndexBFromEdge,
-            triangulation = mapDataGenerator.triangulation1D,
+            cornerIndexAFromEdge = EndlessTerrain.cornerIndexAFromEdge,
+            cornerIndexBFromEdge = EndlessTerrain.cornerIndexBFromEdge,
+            triangulation = EndlessTerrain.triangulation1D,
             // Arrays to fill with this job
             triangles = triangles.AsParallelWriter(),
             vertices = uniqueVertices.AsParallelWriter(),
         };
         
-        JobHandle marchHandle = marchJob.Schedule(generatedMap.Length, 100, mapDataHandle);
+        marchHandle = marchJob.Schedule(generatedMap.Length, 100, mapDataHandle);
 
         // marchHandle.Complete();
         //
@@ -189,34 +159,63 @@ public class TerrainChunk : MonoBehaviour
     {
         yield return new WaitUntil(() => job.IsCompleted);
         job.Complete();
-        
-        
-        mesh.SetVertices(verts.ToArray());
-        mesh.SetNormals(normals.ToArray());
-        mesh.SetTriangles(tris.ToArray(),0);
-        
-        mesh.bounds = new Bounds(new Vector3(((float) MapDataGenerator.ChunkSize) / 2, ((float) MapDataGenerator.chunkHeight)  / 2, ((float) MapDataGenerator.ChunkSize) / 2), 
-            new Vector3(MapDataGenerator.ChunkSize , MapDataGenerator.chunkHeight, MapDataGenerator.ChunkSize));
 
-            
-        var colliderJob = new MeshColliderBakeJob()
+        if (removeRequest)
         {
-            meshId = mesh.GetInstanceID()
-        };
+            verts.Dispose();
+            normals.Dispose();
+            tris.Dispose();
+        }
+        else
+        {
+            mesh.SetVertices(verts.ToArray());
+            mesh.SetNormals(normals.ToArray());
+            mesh.SetTriangles(tris.ToArray(),0);
 
-        JobHandle colliderJobHandle = colliderJob.Schedule();
-        isInit = true;
-        
-        mesh.RecalculateTangents();
+            mesh.bounds = new Bounds(new Vector3(((float) MapDataGenerator.ChunkSize) / 2, ((float) MapDataGenerator.chunkHeight)  / 2, ((float) MapDataGenerator.ChunkSize) / 2), 
+                new Vector3(MapDataGenerator.ChunkSize , MapDataGenerator.chunkHeight, MapDataGenerator.ChunkSize));
 
-        sampler.Begin();
-        verts.Dispose(colliderJobHandle);
-        normals.Dispose(colliderJobHandle);
-        tris.Dispose(colliderJobHandle);
-        sampler.End();
+            mc.sharedMesh = mesh;
+                
+            var colliderJob = new MeshColliderBakeJob()
+            {
+                meshId = mesh.GetInstanceID()
+            };
+
+            JobHandle colliderJobHandle = colliderJob.Schedule();
+
+            mesh.RecalculateTangents();
+
+            verts.Dispose(colliderJobHandle);
+            normals.Dispose(colliderJobHandle);
+            tris.Dispose(colliderJobHandle);
+            safeToRemove = true;
+        }
     }
 
+    
+    public void DestroyChunk()
+    {
+        if (SafeToRemove)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            removeRequest = true;
+        }
+    }
 
+    //////////////////////////////////////////////////////////////////
+    // Debug Methods
+    //////////////////////////////////////////////////////////////////
+    
+    [ContextMenu("Unity recalculate normal")]
+    public void DebugRecalculateNormals()
+    {
+        mf.mesh.RecalculateNormals();
+    }
+    
     public void DebugData(NativeArray<float> map, int resolution)
     {
         GameObject g = new GameObject("Chunk map " + position);
@@ -246,21 +245,6 @@ public class TerrainChunk : MonoBehaviour
             }
             
             
-        }
-    }
-
-    private void OnDestroy() 
-    {
-        if (!isInit)
-        {
-            try
-            {
-                triangles.Dispose();
-                uniqueVertices.Dispose();
-            }
-            catch (Exception e)
-            {
-            }
         }
     }
 

@@ -20,10 +20,10 @@ public class MapDataGenerator : MonoBehaviour
 {
     public int seed;
     
-    [ShowInInspector] private const int chunkSize = 24;
+    [ShowInInspector] private const int chunkSize = 16;
     [ShowInInspector] public const int chunkHeight = 128;
     [ShowInInspector] public const float threshold = 0;
-    [ShowInInspector] public int resolution = 6;
+    [ShowInInspector] public int resolution = 2;
     public static int ChunkSize => chunkSize;
     public int supportedChunkSize => ChunkSize + resolution * 3;
     
@@ -35,31 +35,11 @@ public class MapDataGenerator : MonoBehaviour
     // for 17 dots as chunk
     // so we have 16 blocks per chunk, hence the + 3
 
-    public NativeArray<int> cornerIndexAFromEdge;
-    public NativeArray<int> cornerIndexBFromEdge;
-    public NativeArray<int> triangulation1D;
-
     private VanillaFunction vanillaFunction;
 
-    private void Awake()
+    private void Start()
     {
-        // Temporary, initialize terrain function with seed
         vanillaFunction = new VanillaFunction(seed);
-        cornerIndexAFromEdge = new NativeArray<int>(12, Allocator.Persistent);
-        cornerIndexAFromEdge.CopyFrom(MarchTable.cornerIndexAFromEdgeArray);
-        cornerIndexBFromEdge = new NativeArray<int>(12, Allocator.Persistent);
-        cornerIndexBFromEdge.CopyFrom(MarchTable.cornerIndexBFromEdgeArray);
-        triangulation1D = new NativeArray<int>(4096, Allocator.Persistent);
-        triangulation1D.CopyFrom(MarchTable.triangulation1DArray);
-    }
-    
-    private void OnDisable()
-    {
-        // Dispose manually March table's NativeArray 
-        // TODO : Find a way to do this in MarchTable class directly
-        cornerIndexAFromEdge.Dispose();
-        cornerIndexBFromEdge.Dispose();
-        triangulation1D.Dispose();
     }
 
     // First job to be called from CreateChunk to generate MapData 
