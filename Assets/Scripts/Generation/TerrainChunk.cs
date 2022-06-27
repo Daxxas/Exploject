@@ -1,17 +1,11 @@
 using System;
 using System.Collections;
 using System.Numerics;
-using DefaultNamespace;
 using TMPro;
-using Unity.Burst;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.Profiling;
-using UnityEngine.Rendering;
 using Vector2 = UnityEngine.Vector2;
 using Vector3 = UnityEngine.Vector3;
 
@@ -66,12 +60,12 @@ public class TerrainChunk : MonoBehaviour
     {
         Vector3 transposedViewerPosition = new Vector3(viewerPosition.x, MapDataGenerator.chunkHeight / 2, viewerPosition.y);
         
-        float viewerDistanceFromNearEdge = Mathf.Sqrt(bounds.SqrDistance(transposedViewerPosition));
+        var viewerDistanceFromNearEdge = Mathf.Sqrt(bounds.SqrDistance(transposedViewerPosition));
         
-        bool visible = viewerDistanceFromNearEdge <= maxViewDst * MapDataGenerator.ChunkSize;
+        bool visible = viewerDistanceFromNearEdge <= maxViewDst;
         SetVisible(visible);
     }
-
+    
     public void SetVisible(bool visible)
     {
         chunkLOD1.SetActive(visible);
@@ -80,7 +74,7 @@ public class TerrainChunk : MonoBehaviour
 
     public bool IsVisible()
     {
-        return gameObject.activeSelf;
+        return chunkLOD1.activeSelf;
     }
 
     //////////////////////////////////////////////////////////////////
@@ -95,11 +89,6 @@ public class TerrainChunk : MonoBehaviour
         NativeList<Vector3> chunkVertices = new NativeList<Vector3>(Allocator.TempJob);
         NativeList<Vector3> chunkNormals = new NativeList<Vector3>(Allocator.TempJob);
         
-        // Generate mesh object with its components
-        bounds = new Bounds(new Vector3(((float) MapDataGenerator.ChunkSize) / 2, ((float) MapDataGenerator.chunkHeight)  / 2, ((float) MapDataGenerator.ChunkSize) / 2), 
-            new Vector3(MapDataGenerator.ChunkSize , MapDataGenerator.chunkHeight, MapDataGenerator.ChunkSize));
-        // gameObject.AddComponent<BoundGizmo>();
-
         Mesh mesh = new Mesh();
 
         mf.sharedMesh = mesh;
@@ -122,11 +111,6 @@ public class TerrainChunk : MonoBehaviour
         
         marchHandle = marchJob.Schedule(generatedMap.Length, 100, mapDataHandle);
 
-        // marchHandle.Complete();
-        //
-        // DebugData(generatedMap); 
-        // DebugTriangles(triangles.ToArray(Allocator.Persistent), uniqueVertices); 
-        
         // Generate Mesh from Marching cube result
         var chunkMeshJob = new ChunkMeshJob()
         {
@@ -175,6 +159,8 @@ public class TerrainChunk : MonoBehaviour
             mesh.bounds = new Bounds(new Vector3(((float) MapDataGenerator.ChunkSize) / 2, ((float) MapDataGenerator.chunkHeight)  / 2, ((float) MapDataGenerator.ChunkSize) / 2), 
                 new Vector3(MapDataGenerator.ChunkSize , MapDataGenerator.chunkHeight, MapDataGenerator.ChunkSize));
 
+            bounds = mr.bounds;
+            
             mc.sharedMesh = mesh;
                 
             var colliderJob = new MeshColliderBakeJob()

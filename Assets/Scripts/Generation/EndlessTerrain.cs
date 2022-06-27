@@ -11,6 +11,7 @@ public class EndlessTerrain : MonoBehaviour
 {
     [Header("Parameters")]
     [SerializeField] private int chunkViewDistance = 8;
+    private int unitViewDistance => chunkViewDistance * MapDataGenerator.ChunkSize;
     [SerializeField] private int farChunkViewDistance = 100;
     [SerializeField] private int maxChunksPerFrame = 5;
     
@@ -28,7 +29,6 @@ public class EndlessTerrain : MonoBehaviour
     
     private Vector2 viewerChunkPos;
 
-    private int unitViewDistance => chunkViewDistance * MapDataGenerator.ChunkSize;
     private int unitFarViewDistance => farChunkViewDistance * MapDataGenerator.ChunkSize;
     
     public static NativeArray<int> cornerIndexAFromEdge;
@@ -52,26 +52,13 @@ public class EndlessTerrain : MonoBehaviour
             triangulation1D = new NativeArray<int>(4096, Allocator.Persistent);
             triangulation1D.CopyFrom(MarchTable.triangulation1DArray);
         }
-    }
-
-    private void OnDestroy()
-    {
-        foreach (var terrainChunk in terrainChunkDic)
-        {
-            terrainChunk.Value.marchHandle.Complete();
-            terrainChunk.Value.chunkMeshJob.Complete();
-        }
         
-        if(cornerIndexAFromEdge.IsCreated) cornerIndexAFromEdge.Dispose();
-        if(cornerIndexBFromEdge.IsCreated) cornerIndexBFromEdge.Dispose();
-        if(triangulation1D.IsCreated) triangulation1D.Dispose();
+        UpdateViewerPos();
     }
 
     private void Update()
     {
-        viewerPosition = new Vector2(viewer.position.x, viewer.position.z);
-        viewerChunkPos = new Vector2(Mathf.RoundToInt(viewerPosition.x / MapDataGenerator.ChunkSize),
-            Mathf.RoundToInt(viewerPosition.y / MapDataGenerator.ChunkSize));
+        UpdateViewerPos();
         
         ClearChunksToRemove();
 
@@ -82,6 +69,19 @@ public class EndlessTerrain : MonoBehaviour
         GenerateChunksForFrame();
     }
 
+    /// <summary>
+    /// Update the viewers coordinates in chunk coords & normal coords
+    /// </summary>
+    private void UpdateViewerPos()
+    {
+        viewerPosition = new Vector2(viewer.position.x, viewer.position.z);
+        viewerChunkPos = new Vector2(Mathf.RoundToInt(viewerPosition.x / MapDataGenerator.ChunkSize),
+            Mathf.RoundToInt(viewerPosition.y / MapDataGenerator.ChunkSize));
+    }
+    
+    /// <summary>
+    /// Dequeue the chunks to generate a limited number of time for a frame
+    /// </summary>
     private void GenerateChunksForFrame()
     {
         if (chunkToLoadQueue.Count > 0)
@@ -95,14 +95,15 @@ public class EndlessTerrain : MonoBehaviour
             }
         }
     }
-
-
+    
+    /// <summary>
+    /// Update chunks visibility & calls the creation of chunks if needed
+    /// </summary>
     private void UpdateVisibleChunks()
     {
-
         foreach (var chunk in terrainChunkDic)
         {
-            chunk.Value.UpdateChunk(chunkViewDistance, viewerChunkPos);
+            chunk.Value.UpdateChunk(unitViewDistance, viewerPosition);
         }
 
         for (int zOffset = -chunkViewDistance; zOffset <= chunkViewDistance ; zOffset++)
@@ -119,20 +120,27 @@ public class EndlessTerrain : MonoBehaviour
         }
     }
 
-    private void CreateNewChunk(Vector2 viewedChunkCoord)
+    /// <summary>
+    /// Creates a new chunk gameobject at a given position and enqueue it to the chunk to generate
+    /// </summary>
+    /// <param name="chunkCoord">Chunk coordinates</param>
+    private void CreateNewChunk(Vector2 chunkCoord)
     {
         var instantiatedChunk = Instantiate(chunkObject, transform);
-        instantiatedChunk.name = $"Chunk Terrain {viewedChunkCoord.x} {viewedChunkCoord.y}";
+        instantiatedChunk.name = $"Chunk Terrain {chunkCoord.x} {chunkCoord.y}";
         var chunk = instantiatedChunk.GetComponent<TerrainChunk>();
         var chunkPos = new ChunkPos()
         {
-            pos = viewedChunkCoord,
+            pos = chunkCoord,
             chunk = chunk
         };
         chunkToLoadQueue.Enqueue(chunkPos, Vector2.Distance(viewerChunkPos, viewerPosition));
-        terrainChunkDic.Add(viewedChunkCoord, chunk);
+        terrainChunkDic.Add(chunkCoord, chunk);
     }
-
+    
+    /// <summary>
+    /// Dequeue the chunks to remove
+    /// </summary>
     private void ClearChunksToRemove()
     {
         while (chunkToRemove.TryDequeue(out var chunkPos))
@@ -147,13 +155,15 @@ public class EndlessTerrain : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Updates all the chunks to generate priorities in function of the distance from the player
+    /// </summary>
     private void UpdateChunksPriorities()
     {
         foreach (var chunkPos in chunkToLoadQueue)
         {
             float chunkDistance = Vector2.Distance(chunkPos.pos, viewerChunkPos);
-
-            if (chunkDistance <= chunkViewDistance)
+            if (chunkDistance <= unitViewDistance)
             {
                 chunkToLoadQueue.UpdatePriority(chunkPos, Vector2.Distance(chunkPos.pos, viewerChunkPos));
             }
@@ -162,6 +172,20 @@ public class EndlessTerrain : MonoBehaviour
                 chunkToRemove.Enqueue(chunkPos);
             }
         }
+    }
+    
+    
+    private void OnDestroy()
+    {
+        foreach (var terrainChunk in terrainChunkDic)
+        {
+            terrainChunk.Value.marchHandle.Complete();
+            terrainChunk.Value.chunkMeshJob.Complete();
+        }
+        
+        if(cornerIndexAFromEdge.IsCreated) cornerIndexAFromEdge.Dispose();
+        if(cornerIndexBFromEdge.IsCreated) cornerIndexBFromEdge.Dispose();
+        if(triangulation1D.IsCreated) triangulation1D.Dispose();
     }
     
     private void OnDrawGizmos()
@@ -178,5 +202,6 @@ public class EndlessTerrain : MonoBehaviour
     private class ChunkPos : FastPriorityQueueNode
     {
         public Vector2 pos;
-        public TerrainChunk chunk; }
+        public TerrainChunk chunk; 
+    }
 }
