@@ -631,8 +631,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: adcf1a52731d4139bb01829ba7360aa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  chunkViewDistance: 32
-  farChunkViewDistance: 16
+  chunkViewDistance: 8
+  farChunkViewDistance: 4
   maxChunksPerFrame: 2
   viewer: {fileID: 433478268}
   dataGenerator: {fileID: 2127954275}

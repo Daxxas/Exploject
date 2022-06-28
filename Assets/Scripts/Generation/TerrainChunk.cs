@@ -21,6 +21,9 @@ public class TerrainChunk : MonoBehaviour
     private Vector2 position;
     public Vector2 Position => position;
 
+    private Vector2 chunkPos;
+    public Vector2 ChunkPos => chunkPos;
+
     private Bounds bounds;
     
     private int resolution;
@@ -40,6 +43,7 @@ public class TerrainChunk : MonoBehaviour
     {
         mapDataGenerator = dataGenerator;
         position = coord * MapDataGenerator.ChunkSize;
+        chunkPos = coord;
         
         transform.position = new Vector3(position.x, 0, position.y);
 
@@ -69,14 +73,21 @@ public class TerrainChunk : MonoBehaviour
     public void SetVisible(bool visible)
     {
         chunkLOD1.SetActive(visible);
-        
     }
 
-    public bool IsVisible()
+    
+    public void DestroyChunk()
     {
-        return chunkLOD1.activeSelf;
+        if (SafeToRemove)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            removeRequest = true;
+        }
     }
-
+    
     //////////////////////////////////////////////////////////////////
     // Jobs
     //////////////////////////////////////////////////////////////////
@@ -176,19 +187,6 @@ public class TerrainChunk : MonoBehaviour
             normals.Dispose(colliderJobHandle);
             tris.Dispose(colliderJobHandle);
             safeToRemove = true;
-        }
-    }
-
-    
-    public void DestroyChunk()
-    {
-        if (SafeToRemove)
-        {
-            Destroy(gameObject);
-        }
-        else
-        {
-            removeRequest = true;
         }
     }
 

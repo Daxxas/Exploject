@@ -6,14 +6,24 @@ namespace DefaultNamespace
     public class BoundGizmo : MonoBehaviour
     {
         [SerializeField] private bool displayGizmos = false;
+
+        private TerrainChunk terrainChunk;
         
         private MeshRenderer mr;
         private MeshFilter mf;
 
+        [SerializeField] private float distanceFromPlayer;
+        
         private void Start()
         {
-            mr = GetComponent<MeshRenderer>();
-            mf = GetComponent<MeshFilter>();
+            mr = GetComponentInChildren<MeshRenderer>();
+            mf = GetComponentInChildren<MeshFilter>();
+            terrainChunk = GetComponent<TerrainChunk>();
+        }
+
+        private void Update()
+        {
+            float chunkDistance = Vector2.Distance(terrainChunk.ChunkPos, EndlessTerrain.Instance.ViewerChunkPos);
         }
 
         private void OnDrawGizmos()
