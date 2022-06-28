@@ -1,5 +1,6 @@
-using Unity.Mathematics;
+using Unity.Burst;
 
+[BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
 public struct Triangle
 {
     public Edge vertexIndexA;

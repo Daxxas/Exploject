@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 
 
 // Third & last job called from CreateChunk, generate mesh for marching cube data
-[BurstCompile(FloatPrecision.High, FloatMode.Fast,CompileSynchronously = true)]
+[BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
 public struct ChunkMeshJob : IJob
     {
         // Input reference

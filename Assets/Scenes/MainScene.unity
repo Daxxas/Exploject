@@ -631,11 +631,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: adcf1a52731d4139bb01829ba7360aa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  chunkViewDistance: 8
-  farChunkViewDistance: 8
+  chunkViewDistance: 16
+  farChunkViewDistance: 32
   maxChunksPerFrame: 2
   viewer: {fileID: 433478268}
-  dataGenerator: {fileID: 2127954275}
   chunkObject: {fileID: 4480448243231049190, guid: 649b64edaf196d64b80094718a2edf9a, type: 3}
   mapParent: {fileID: 1817684740}
 --- !u!1 &2138677391
