@@ -9,6 +9,9 @@ using Unity.Collections;
 
 public class EndlessTerrain : MonoBehaviour
 {
+    private static EndlessTerrain instance;
+    public static EndlessTerrain Instance => instance;
+
     [Header("Parameters")]
     [SerializeField] private int chunkViewDistance = 8;
     private int unitViewDistance => chunkViewDistance * MapDataGenerator.ChunkSize;
@@ -34,6 +37,20 @@ public class EndlessTerrain : MonoBehaviour
     public static NativeArray<int> cornerIndexAFromEdge;
     public static NativeArray<int> cornerIndexBFromEdge;
     public static NativeArray<int> triangulation1D;
+
+    private void Awake()
+    {
+        if (instance == null)
+        {
+            instance = this;
+            DontDestroyOnLoad(this);
+        }
+        else
+        {
+            Destroy(this);
+        }
+        
+    }
 
     private void Start()
     {
@@ -106,15 +123,17 @@ public class EndlessTerrain : MonoBehaviour
             chunk.Value.UpdateChunk(unitViewDistance, viewerPosition);
         }
 
-        for (int zOffset = -chunkViewDistance; zOffset <= chunkViewDistance ; zOffset++)
-        {
-            for (int xOffset = -chunkViewDistance; xOffset <= chunkViewDistance; xOffset++)
-            {
-                Vector2 viewedChunkCoord = new Vector2(viewerChunkPos.x + xOffset, viewerChunkPos.y + zOffset);
-                
-                if (!terrainChunkDic.ContainsKey(viewedChunkCoord))
+        for(float zOffset = viewerChunkPos.y-chunkViewDistance; zOffset <= viewerChunkPos.y+chunkViewDistance; zOffset++){
+            for (float xOffset = viewerChunkPos.x-chunkViewDistance; xOffset <= viewerChunkPos.x+chunkViewDistance; xOffset++) {
+                bool isInCircle = (xOffset - viewerChunkPos.x)*(xOffset-viewerChunkPos.x) + (zOffset-viewerChunkPos.y)*(zOffset-viewerChunkPos.y) < chunkViewDistance*chunkViewDistance;
+                if (isInCircle)
                 {
-                    CreateNewChunk(viewedChunkCoord);
+                    Vector2 viewedChunkCoord = new Vector2(viewerChunkPos.x + xOffset, viewerChunkPos.y + zOffset);
+
+                    if (!terrainChunkDic.ContainsKey(viewedChunkCoord))
+                    {
+                        CreateNewChunk(viewedChunkCoord);
+                    }
                 }
             }
         }

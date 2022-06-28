@@ -218,7 +218,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 3
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &433478268 stripped
 Transform:
@@ -319,7 +319,7 @@ RectTransform:
   m_Children:
   - {fileID: 1714802054}
   m_Father: {fileID: 0}
-  m_RootOrder: 4
+  m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
@@ -391,7 +391,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 5
+  m_RootOrder: 6
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1714802053
 GameObject:
@@ -541,6 +541,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fea707b8cdcecca48b0a2a918ea3ca2b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &1817684739
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1817684740}
+  m_Layer: 0
+  m_Name: TerrainMap
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1817684740
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1817684739}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 2
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2127954274
 GameObject:
   m_ObjectHideFlags: 0
@@ -586,7 +617,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 2
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2127954277
 MonoBehaviour:
@@ -600,13 +631,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: adcf1a52731d4139bb01829ba7360aa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  chunkViewDistance: 8
-  farChunkViewDistance: 48
+  chunkViewDistance: 32
+  farChunkViewDistance: 16
   maxChunksPerFrame: 2
   viewer: {fileID: 433478268}
   dataGenerator: {fileID: 2127954275}
   chunkObject: {fileID: 4480448243231049190, guid: 649b64edaf196d64b80094718a2edf9a, type: 3}
-  mapParent: {fileID: 2127954276}
+  mapParent: {fileID: 1817684740}
 --- !u!1 &2138677391
 GameObject:
   m_ObjectHideFlags: 0
@@ -731,7 +762,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1645069541073255406, guid: e29ede57f32d0334e8c5740cdef9f856, type: 3}
       propertyPath: speed
-      value: 1500
+      value: 20000
       objectReference: {fileID: 0}
     - target: {fileID: 1645069541073255410, guid: e29ede57f32d0334e8c5740cdef9f856, type: 3}
       propertyPath: m_RootOrder

@@ -18,6 +18,9 @@ using Random = UnityEngine.Random;
 
 public class MapDataGenerator : MonoBehaviour
 {
+    private static MapDataGenerator instance;
+    public static MapDataGenerator Instance => instance;
+
     public int seed;
     
     [ShowInInspector] private const int chunkSize = 16;
@@ -36,6 +39,19 @@ public class MapDataGenerator : MonoBehaviour
     // so we have 16 blocks per chunk, hence the + 3
 
     private VanillaFunction vanillaFunction;
+
+    private void Awake()
+    {
+        if (instance != null)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            instance = this;
+            DontDestroyOnLoad(this);
+        }
+    }
 
     private void Start()
     {
