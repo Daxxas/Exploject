@@ -14,7 +14,12 @@ public class EndlessTerrain : MonoBehaviour
 
     [Header("Parameters")]
     [SerializeField] private int chunkViewDistance = 8;
-    private int unitViewDistance => chunkViewDistance * MapDataGenerator.ChunkSize;
+
+    public int ChunkViewDistance => chunkViewDistance;
+    public int UnitViewDistance => chunkViewDistance * MapDataGenerator.ChunkSize;
+    public int FarChunkViewDistance => ChunkViewDistance + farChunkViewDistance;
+    public int UnitFarChunkViewDistance => FarChunkViewDistance * MapDataGenerator.ChunkSize;
+
     [SerializeField] private int farChunkViewDistance = 100;
     [SerializeField] private int maxChunksPerFrame = 5;
     
@@ -120,7 +125,7 @@ public class EndlessTerrain : MonoBehaviour
     {
         foreach (var chunk in terrainChunkDic)
         {
-            chunk.Value.UpdateChunk(unitViewDistance, viewerPosition);
+            chunk.Value.UpdateChunk();
         }
 
         for(float zOffset = viewerChunkPos.y-chunkViewDistance; zOffset <= viewerChunkPos.y+chunkViewDistance; zOffset++){
@@ -182,7 +187,7 @@ public class EndlessTerrain : MonoBehaviour
         foreach (var chunkPos in chunkToLoadQueue)
         {
             float chunkDistance = Vector2.Distance(chunkPos.pos, viewerChunkPos);
-            if (chunkDistance <= unitViewDistance)
+            if (chunkDistance <= UnitViewDistance)
             {
                 chunkToLoadQueue.UpdatePriority(chunkPos, Vector2.Distance(chunkPos.pos, viewerChunkPos));
             }

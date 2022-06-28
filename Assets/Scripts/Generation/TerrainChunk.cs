@@ -56,13 +56,13 @@ public class TerrainChunk : MonoBehaviour
     }
     
     
-    public void UpdateChunk(float maxViewDst, Vector2 viewerPosition)
+    public void UpdateChunk()
     {
-        Vector3 transposedViewerPosition = new Vector3(viewerPosition.x, MapDataGenerator.chunkHeight / 2, viewerPosition.y);
+        Vector3 transposedViewerPosition = new Vector3(EndlessTerrain.viewerPosition.x, MapDataGenerator.chunkHeight / 2, EndlessTerrain.viewerPosition.y);
         
         var viewerDistanceFromNearEdge = Mathf.Sqrt(bounds.SqrDistance(transposedViewerPosition));
         
-        bool visible = viewerDistanceFromNearEdge <= maxViewDst;
+        bool visible = viewerDistanceFromNearEdge <= EndlessTerrain.Instance.UnitViewDistance;
         SetVisible(visible);
     }
     
