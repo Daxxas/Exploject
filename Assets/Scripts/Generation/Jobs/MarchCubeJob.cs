@@ -12,6 +12,7 @@ using UnityEngine;
 [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
 public struct MarchCubeJob : IJobParallelFor
     {
+        // Input
         [ReadOnly]
         public NativeArray<float> map;
         [ReadOnly]
@@ -20,6 +21,8 @@ public struct MarchCubeJob : IJobParallelFor
         public NativeArray<int> cornerIndexAFromEdge;
         [ReadOnly]
         public NativeArray<int> cornerIndexBFromEdge;
+        
+        // Output
         [WriteOnly]
         public NativeQueue<Triangle>.ParallelWriter triangles;
         [WriteOnly]
@@ -119,24 +122,28 @@ public struct MarchCubeJob : IJobParallelFor
             {
                 Triangle triangle = new Triangle();
                 
+                // For each side (vertex) of the triangle
                 for (int j = 0; j < 3; j++)
                 {
-                    int a0 = cornerIndexAFromEdge[triangulation[cubeindex * 16 + i + j]];
-                    int b0 = cornerIndexBFromEdge[triangulation[cubeindex * 16 + i + j]];
-                    Edge edge0 = new Edge(marchCube[a0].p, marchCube[b0].p);
+                    // Get corresponding edge
+                    int indexA = cornerIndexAFromEdge[triangulation[cubeindex * 16 + i + j]];
+                    int indexB = cornerIndexBFromEdge[triangulation[cubeindex * 16 + i + j]];
+                    Edge edge = new Edge(marchCube[indexA].p, marchCube[indexB].p);
 
-                    vertices.TryAdd(new Edge(marchCube[a0].p, marchCube[b0].p), FindVertexPos(
-                        marchCube[a0].p, marchCube[b0].p, marchCube[a0].val,
-                        marchCube[b0].val) - new float3(resolution, resolution, resolution));
-
-                    triangle[j] = edge0;
+                    // Only one vertices can exist per edge
+                    vertices.TryAdd(new Edge(marchCube[indexA].p, marchCube[indexB].p), FindVertexPos(
+                        marchCube[indexA].p, marchCube[indexB].p, marchCube[indexA].val,
+                        marchCube[indexB].val) - new float3(resolution, resolution, resolution));
+                    
+                    // Keep edge for triangle, multiple triangles can reference the same edge
+                    triangle[j] = edge;
                     
                     // Determine if vertex is border
-                    bool isBordera0 = marchCube[a0].p.x < resolution || marchCube[a0].p.z < resolution || 
-                                      marchCube[a0].p.x > MapDataGenerator.ChunkSize+(resolution) || marchCube[a0].p.z > MapDataGenerator.ChunkSize+(resolution);
-                    bool isBorderb0 = marchCube[b0].p.x < resolution || marchCube[b0].p.z < resolution ||
-                                      marchCube[b0].p.x > MapDataGenerator.ChunkSize+(resolution) || marchCube[b0].p.z > MapDataGenerator.ChunkSize+(resolution);
-                    triangle.SetEdgeBorder(j, isBordera0 || isBorderb0);
+                    bool isBorderIndexA = marchCube[indexA].p.x < resolution || marchCube[indexA].p.z < resolution || 
+                                      marchCube[indexA].p.x > MapDataGenerator.ChunkSize+(resolution) || marchCube[indexA].p.z > MapDataGenerator.ChunkSize+(resolution);
+                    bool isBorderInexB = marchCube[indexB].p.x < resolution || marchCube[indexB].p.z < resolution ||
+                                      marchCube[indexB].p.x > MapDataGenerator.ChunkSize+(resolution) || marchCube[indexB].p.z > MapDataGenerator.ChunkSize+(resolution);
+                    triangle.SetEdgeBorder(j, isBorderIndexA || isBorderInexB);
                 }
                 
                 // Triangles are stored in a queue because we don't know how many triangles we will get & we can write in parallel easily in a queue
@@ -188,6 +195,7 @@ public struct MarchCubeJob : IJobParallelFor
 [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
 public struct Edge : IEquatable<Edge>
 {
+    // point 1 and point 2 should be interchangeable
     public readonly int3 point1;
     public readonly int3 point2;
     public Edge(int3 item1, int3 item2) { point1 = item1; point2 = item2;}
@@ -202,6 +210,7 @@ public struct Edge : IEquatable<Edge>
         return "a0: " + point1.ToString() + ", b0: " + point2.ToString();
     }
 
+    // Addition hashcodes so edge 2, 0 and edge 0, 2 are the same
     public override int GetHashCode()
     {
         int hash = point1.GetHashCode() + point2.GetHashCode();

@@ -25,14 +25,13 @@ public class EndlessTerrain : MonoBehaviour
     
     [Header("References")]
     [SerializeField] private Transform viewer;
-    [SerializeField] private MapDataGenerator dataGenerator;
     [SerializeField] private GameObject chunkObject;
     [SerializeField] private Transform mapParent;
     
     [ShowInInspector] public static Vector2 viewerPosition;
     
     private Dictionary<Vector2, TerrainChunk> terrainChunkDic = new Dictionary<Vector2, TerrainChunk>();
-    private FastPriorityQueue<ChunkPos> chunkToLoadQueue = new FastPriorityQueue<ChunkPos>(15000);
+    private FastPriorityQueue<ChunkPos> chunkLoadQueue = new FastPriorityQueue<ChunkPos>(15000);
     private Queue<ChunkPos> chunkToStopLoad = new Queue<ChunkPos>();
     private Queue<Vector2> chunkToRemove = new Queue<Vector2>();
     
@@ -99,8 +98,7 @@ public class EndlessTerrain : MonoBehaviour
     private void UpdateViewerPos()
     {
         viewerPosition = new Vector2(viewer.position.x, viewer.position.z);
-        viewerChunkPos = new Vector2(Mathf.RoundToInt(viewerPosition.x / MapDataGenerator.ChunkSize),
-            Mathf.RoundToInt(viewerPosition.y / MapDataGenerator.ChunkSize));
+        viewerChunkPos = new Vector2(Mathf.RoundToInt(viewerPosition.x / MapDataGenerator.ChunkSize), Mathf.RoundToInt(viewerPosition.y / MapDataGenerator.ChunkSize));
     }
     
     /// <summary>
@@ -108,29 +106,29 @@ public class EndlessTerrain : MonoBehaviour
     /// </summary>
     private void GenerateChunksForFrame()
     {
-        if (chunkToLoadQueue.Count > 0)
+        if (chunkLoadQueue.Count > 0)
         {
-            var currentChunkPos = chunkToLoadQueue.Dequeue();
+            var currentChunkPos = chunkLoadQueue.Dequeue();
             int i = 0;
             while(i < maxChunksPerFrame)
             {
-                currentChunkPos.chunk.InitChunk(currentChunkPos.pos, dataGenerator, dataGenerator.resolution);
+                currentChunkPos.chunk.InitChunk(currentChunkPos.pos, MapDataGenerator.Instance.resolution);
                 i++;
             }
         }
     }
     
     /// <summary>
-    /// Update chunks visibility & calls the creation of chunks if needed
+    /// Update chunks visibility & initiate the creation of chunks if needed
     /// </summary>
     private void UpdateVisibleChunks()
     {
         foreach (var chunk in terrainChunkDic)
         {
-            chunk.Value.UpdateChunk();
+            chunk.Value.UpdateVisibility();
             
+            // If chunk is too far, delete it completely
             float chunkDistance = Vector2.Distance(chunk.Key, viewerChunkPos);
-        
             if (chunkDistance > FarChunkViewDistance)
             {
                 chunkToRemove.Enqueue(chunk.Key);
@@ -158,33 +156,38 @@ public class EndlessTerrain : MonoBehaviour
     /// <param name="chunkCoord">Chunk coordinates</param>
     private void CreateNewChunk(Vector2 chunkCoord)
     {
+        // Generate chunk object
         var instantiatedChunk = Instantiate(chunkObject, mapParent);
         instantiatedChunk.name = $"Chunk Terrain {chunkCoord.x} {chunkCoord.y}";
         var chunk = instantiatedChunk.GetComponent<TerrainChunk>();
+        terrainChunkDic.Add(chunkCoord, chunk);
+        
+        // Queue chunk to load queue
         var chunkPos = new ChunkPos()
         {
             pos = chunkCoord,
             chunk = chunk
         };
-        chunkToLoadQueue.Enqueue(chunkPos, Vector2.Distance(viewerChunkPos, viewerPosition));
-        terrainChunkDic.Add(chunkCoord, chunk);
+        chunkLoadQueue.Enqueue(chunkPos, Vector2.Distance(viewerChunkPos, viewerPosition));
     }
     
     /// <summary>
-    /// Dequeue the chunks to remove
+    /// Removes chunks objects when they are too far/don't need to be loaded anymore
     /// </summary>
     private void ClearChunksToRemove()
     {
+        // Remove chunks in load queue that are useless to load
         while (chunkToStopLoad.TryDequeue(out var chunkPos))
         {
-            if (chunkToLoadQueue.Contains(chunkPos))
+            if (chunkLoadQueue.Contains(chunkPos))
             {
-                chunkToLoadQueue.Remove(chunkPos);
+                chunkLoadQueue.Remove(chunkPos);
             }
             terrainChunkDic.Remove(chunkPos.pos);
             chunkPos.chunk.DestroyChunk();
         }
 
+        // Remove chunks that are too far from player
         while (chunkToRemove.TryDequeue(out var pos))
         {
             if (terrainChunkDic.ContainsKey(pos))
@@ -196,18 +199,19 @@ public class EndlessTerrain : MonoBehaviour
     }
 
     /// <summary>
-    /// Updates all the chunks to generate priorities in function of the distance from the player
+    /// Updates all the chunks priorities in the load queue in function of the distance from the player
     /// </summary>
     private void UpdateChunksPriorities()
     {
-        foreach (var chunkPos in chunkToLoadQueue)
+        foreach (var chunkPos in chunkLoadQueue)
         {
             float chunkDistance = Vector2.Distance(chunkPos.pos, viewerChunkPos);
-            
+            // Update priority
             if (chunkDistance <= ChunkViewDistance)
             {
-                chunkToLoadQueue.UpdatePriority(chunkPos, chunkDistance);
+                chunkLoadQueue.UpdatePriority(chunkPos, chunkDistance);
             }
+            // Chunk (in load queue) is too far, there's no need to load it anymore
             else
             {
                 chunkToStopLoad.Enqueue(chunkPos);

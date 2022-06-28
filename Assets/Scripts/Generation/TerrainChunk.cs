@@ -17,7 +17,6 @@ public class TerrainChunk : MonoBehaviour
     [SerializeField] private MeshCollider mc;
     [SerializeField] private Material meshMaterial;
 
-    private MapDataGenerator mapDataGenerator;
     private Vector2 position;
     public Vector2 Position => position;
 
@@ -39,28 +38,37 @@ public class TerrainChunk : MonoBehaviour
     // TODO : Dynamic LOD System
     [SerializeField] private GameObject chunkLOD1;
 
-    public TerrainChunk InitChunk(Vector2 coord, MapDataGenerator dataGenerator, int resolution)
+    /// <summary>
+    /// Initialize chunk and starts generation
+    /// </summary>
+    /// <param name="coord">Chunk coordinates</param>
+    /// <param name="dataGenerator"></param>
+    /// <param name="resolution">Expected mesh resolution generation</param>
+    /// <returns></returns>
+    public TerrainChunk InitChunk(Vector2 coord, int resolution)
     {
-        mapDataGenerator = dataGenerator;
         position = coord * MapDataGenerator.ChunkSize;
         chunkPos = coord;
         
         transform.position = new Vector3(position.x, 0, position.y);
 
+        // TODO : Change this for LODs support
         this.resolution = resolution;
 
         // Variables that will be filled & passed along jobs
         NativeArray<float> generatedMap = new NativeArray<float>(MapDataGenerator.chunkHeight * supportedChunkSize * supportedChunkSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
-        var mapDataHandle = mapDataGenerator.GenerateMapData(position, generatedMap);
+        var mapDataHandle = MapDataGenerator.Instance.GenerateMapData(position, generatedMap);
 
         chunkMeshJob = GenerateChunkMesh(generatedMap, mapDataHandle);
         
         return this;
     }
     
-    
-    public void UpdateChunk()
+    /// <summary>
+    /// Update chunk visibility based on distance from player location
+    /// </summary>
+    public void UpdateVisibility()
     {
         Vector3 transposedViewerPosition = new Vector3(EndlessTerrain.viewerPosition.x, MapDataGenerator.chunkHeight / 2, EndlessTerrain.viewerPosition.y);
         
@@ -70,12 +78,18 @@ public class TerrainChunk : MonoBehaviour
         SetVisible(visible);
     }
     
+    /// <summary>
+    /// Set chunk visibility
+    /// </summary>
+    /// <param name="visible">Chunk visibility</param>
     public void SetVisible(bool visible)
     {
         chunkLOD1.SetActive(visible);
     }
 
-    
+    /// <summary>
+    /// Destroy chunk, if chunk has jobs running, wait for them to finish before destroying chunk
+    /// </summary>
     public void DestroyChunk()
     {
         if (SafeToRemove)
@@ -91,6 +105,13 @@ public class TerrainChunk : MonoBehaviour
     //////////////////////////////////////////////////////////////////
     // Jobs
     //////////////////////////////////////////////////////////////////
+    
+    /// <summary>
+    /// Generate a mesh from a map data array
+    /// </summary>
+    /// <param name="generatedMap">Data array for marching cube</param>
+    /// <param name="mapDataHandle">Handle for the data job</param>
+    /// <returns></returns>
     public JobHandle GenerateChunkMesh(NativeArray<float> generatedMap, JobHandle mapDataHandle)
     {
         NativeQueue<Triangle> triangles = new NativeQueue<Triangle>(Allocator.TempJob);
@@ -143,14 +164,17 @@ public class TerrainChunk : MonoBehaviour
         uniqueVertices.Dispose(chunkMeshHandle);
         generatedMap.Dispose(chunkMeshHandle);
 
-        StartCoroutine(ApplyMeshData(mesh, chunkVertices, chunkNormals, chunkTriangles, mc, chunkMeshHandle));
+        StartCoroutine(ApplyMeshData(mesh, chunkVertices, chunkNormals, chunkTriangles, chunkMeshHandle));
         
 
         
         return chunkMeshHandle;
     }
     
-    private IEnumerator ApplyMeshData(Mesh mesh, NativeList<Vector3> verts, NativeList<Vector3> normals, NativeList<int> tris, MeshCollider mc, JobHandle job)
+    /// <summary>
+    /// Apply mesh data from ChunkMeshJob on chunk mesh
+    /// </summary>
+    private IEnumerator ApplyMeshData(Mesh mesh, NativeList<Vector3> verts, NativeList<Vector3> normals, NativeList<int> tris, JobHandle job)
     {
         yield return new WaitUntil(() => job.IsCompleted);
         job.Complete();
@@ -195,13 +219,7 @@ public class TerrainChunk : MonoBehaviour
     //////////////////////////////////////////////////////////////////
     // Debug Methods
     //////////////////////////////////////////////////////////////////
-    
-    [ContextMenu("Unity recalculate normal")]
-    public void DebugRecalculateNormals()
-    {
-        mf.mesh.RecalculateNormals();
-    }
-    
+
     public void DebugData(NativeArray<float> map, int resolution)
     {
         GameObject g = new GameObject("Chunk map " + position);

@@ -18,11 +18,8 @@ public struct ChunkMeshJob : IJob
         [ReadOnly]
         public NativeArray<float> map;
         // Output
-
         public NativeList<Vector3> chunkVertices;
-
         public NativeList<int> chunkTriangles;
-
         public NativeList<Vector3> chunkNormals;
 
         public int resolution;
@@ -125,7 +122,6 @@ public struct ChunkMeshJob : IJob
 
 
             // Normal calculation
-
             for (int i = 0; i < chunkVertices.Length; i++)
             {
                 // normals needs to be set to zero before calculating them
@@ -138,8 +134,6 @@ public struct ChunkMeshJob : IJob
             
             /////////////////////////////////
             matchingIndices.Dispose();
-            // borderTriangles.Dispose();
-            // borderVertices.Dispose();
         }
 
         private void CalculateNormals(NativeArray<Vector3> vertices, NativeArray<Vector3> borderVertices, NativeArray<int> borderTriangles, NativeArray<int> triangles, NativeArray<Vector3> normals)
