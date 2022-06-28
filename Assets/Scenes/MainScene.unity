@@ -632,7 +632,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   chunkViewDistance: 8
-  farChunkViewDistance: 4
+  farChunkViewDistance: 8
   maxChunksPerFrame: 2
   viewer: {fileID: 433478268}
   dataGenerator: {fileID: 2127954275}

@@ -33,7 +33,8 @@ public class EndlessTerrain : MonoBehaviour
     
     private Dictionary<Vector2, TerrainChunk> terrainChunkDic = new Dictionary<Vector2, TerrainChunk>();
     private FastPriorityQueue<ChunkPos> chunkToLoadQueue = new FastPriorityQueue<ChunkPos>(15000);
-    private Queue<ChunkPos> chunkToRemove = new Queue<ChunkPos>();
+    private Queue<ChunkPos> chunkToStopLoad = new Queue<ChunkPos>();
+    private Queue<Vector2> chunkToRemove = new Queue<Vector2>();
     
     private Vector2 viewerChunkPos;
     public Vector2 ViewerChunkPos => viewerChunkPos;
@@ -82,16 +83,14 @@ public class EndlessTerrain : MonoBehaviour
     private void Update()
     {
         UpdateViewerPos();
-
-        UpdateChunksPriorities();
         
+        ClearChunksToRemove();
+        
+        UpdateChunksPriorities();
+
         UpdateVisibleChunks();
 
-        // ClearChunksToRemove();
-    
         GenerateChunksForFrame();
-
-        // Debug.Log(chunkToLoadQueue.Count);
     }
 
     /// <summary>
@@ -129,20 +128,28 @@ public class EndlessTerrain : MonoBehaviour
         foreach (var chunk in terrainChunkDic)
         {
             chunk.Value.UpdateChunk();
+            
+            float chunkDistance = Vector2.Distance(chunk.Key, viewerChunkPos);
+        
+            if (chunkDistance > FarChunkViewDistance)
+            {
+                chunkToRemove.Enqueue(chunk.Key);
+            }
         }
 
+        // TODO : Load chunk in circle instead of square
         for (int zOffset = -chunkViewDistance; zOffset <= chunkViewDistance; zOffset++)
         {
             for (int xOffset = -chunkViewDistance; xOffset <= chunkViewDistance; xOffset++)
             {
                 Vector2 viewedChunkCoord = new Vector2(viewerChunkPos.x + xOffset, viewerChunkPos.y + zOffset);
-                if (!terrainChunkDic.ContainsKey(viewedChunkCoord))
+                float chunkDistance = Vector2.Distance(viewedChunkCoord, viewerChunkPos);
+                if (!terrainChunkDic.ContainsKey(viewedChunkCoord) && chunkDistance <= ChunkViewDistance)
                 {
                     CreateNewChunk(viewedChunkCoord);
                 }
             }
         }
-
     }
 
     /// <summary>
@@ -168,13 +175,22 @@ public class EndlessTerrain : MonoBehaviour
     /// </summary>
     private void ClearChunksToRemove()
     {
-        while (chunkToRemove.TryDequeue(out var chunkPos))
+        while (chunkToStopLoad.TryDequeue(out var chunkPos))
         {
             if (chunkToLoadQueue.Contains(chunkPos))
             {
                 chunkToLoadQueue.Remove(chunkPos);
-                terrainChunkDic.Remove(chunkPos.pos);
-                // chunkPos.chunk.DestroyChunk();
+            }
+            terrainChunkDic.Remove(chunkPos.pos);
+            chunkPos.chunk.DestroyChunk();
+        }
+
+        while (chunkToRemove.TryDequeue(out var pos))
+        {
+            if (terrainChunkDic.ContainsKey(pos))
+            {
+                terrainChunkDic[pos].DestroyChunk();
+                terrainChunkDic.Remove(pos);
             }
         }
     }
@@ -188,13 +204,13 @@ public class EndlessTerrain : MonoBehaviour
         {
             float chunkDistance = Vector2.Distance(chunkPos.pos, viewerChunkPos);
             
-            if (chunkDistance < ChunkViewDistance)
+            if (chunkDistance <= ChunkViewDistance)
             {
                 chunkToLoadQueue.UpdatePriority(chunkPos, chunkDistance);
             }
             else
             {
-                // chunkToRemove.Enqueue(chunkPos);
+                chunkToStopLoad.Enqueue(chunkPos);
             }
         }
     }
@@ -227,6 +243,6 @@ public class EndlessTerrain : MonoBehaviour
     private class ChunkPos : FastPriorityQueueNode
     {
         public Vector2 pos;
-        public TerrainChunk chunk; 
+        public TerrainChunk chunk;
     }
 }

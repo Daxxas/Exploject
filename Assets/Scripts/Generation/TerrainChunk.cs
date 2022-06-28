@@ -80,7 +80,7 @@ public class TerrainChunk : MonoBehaviour
     {
         if (SafeToRemove)
         {
-            Destroy(gameObject);
+            Destroy(this);
         }
         else
         {
@@ -160,6 +160,8 @@ public class TerrainChunk : MonoBehaviour
             verts.Dispose();
             normals.Dispose();
             tris.Dispose();
+            safeToRemove = true;
+            DestroyChunk();
         }
         else
         {
