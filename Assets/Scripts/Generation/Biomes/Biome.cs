@@ -5,4 +5,5 @@ using UnityEngine;
 public class Biome : ScriptableObject
 {
     public int id;
+    public Color color;
 }

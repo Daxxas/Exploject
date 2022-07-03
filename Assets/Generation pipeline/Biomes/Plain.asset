@@ -13,3 +13,4 @@ MonoBehaviour:
   m_Name: Plain
   m_EditorClassIdentifier: 
   id: 1
+  color: {r: 0.078431375, g: 0.9607844, b: 0.16470589, a: 1}

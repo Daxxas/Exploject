@@ -28,7 +28,7 @@ public class Smooth : Stage
         int bottom = chunkBiome[x - 1, z];
         int left = chunkBiome[x, z+1];
         int right = chunkBiome[x, z-1];
-                
+        
         bool vert = (top ==  bottom);
         bool horiz = (left == right);
                 
