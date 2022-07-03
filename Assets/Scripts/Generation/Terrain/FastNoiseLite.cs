@@ -49,6 +49,8 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using Unity.Burst;
+using UnityEngine;
 
 // Switch between using floats or doubles for input position
 using FNLfloat = System.Single;
@@ -66,7 +68,8 @@ public struct FastNoiseLite
         Cellular,
         Perlin,
         ValueCubic,
-        Value 
+        Value,
+        WhiteNoise
     };
 
     public enum RotationType3D 
@@ -327,7 +330,7 @@ public struct FastNoiseLite
     public float GetNoise(FNLfloat x, FNLfloat y)
     {
         TransformNoiseCoordinate(ref x, ref y);
-
+        
         switch (mFractalType)
         {
             default:
@@ -747,6 +750,8 @@ public struct FastNoiseLite
                 return SingleValueCubic(seed, x, y);
             case NoiseType.Value:
                 return SingleValue(seed, x, y);
+            case NoiseType.WhiteNoise:
+                return SingleWhiteNoise(seed, x, y);
             default:
                 return 0;
         }
@@ -2007,7 +2012,25 @@ public struct FastNoiseLite
             zs) * (1 / (1.5f * 1.5f * 1.5f));
     }
 
+    // White noise
 
+    // 32 bits precision
+    private float SingleWhiteNoise(int seed, FNLfloat x, FNLfloat y)
+    {
+        long hashX = Convert.ToInt64(x) ^ seed;
+        long hashZ = Convert.ToInt64(y) ^ seed;
+    
+        long hash = ((hashX ^ ((long)((ulong)hashX >> 16))) + ((hashZ ^ ((long)((ulong)hashZ >> 16))) << 16)) ^ seed;
+        hash ^= ((long)((ulong)hash >> 16));
+        hash *= 0x85ebca6b;
+        hash ^= ((long)((ulong)hash >> 13));
+        hash *= 0xc2b2ae35;
+        hash ^= ((long)((ulong)hash >> 16));
+    
+        return Convert.ToInt64(hash);
+    } 
+    
+    
     // Value Noise
 
     private float SingleValue(int seed, FNLfloat x, FNLfloat y)
