@@ -56,6 +56,7 @@ using UnityEngine;
 using FNLfloat = System.Single;
 //using FNLfloat = System.Double;
 
+[Serializable]
 public struct FastNoiseLite
 {
     private const short INLINE = 256; // MethodImplOptions.AggressiveInlining;
@@ -155,7 +156,7 @@ public struct FastNoiseLite
         mFrequency = 0.01f;
         mNoiseType = NoiseType.OpenSimplex2;
         mRotationType3D = RotationType3D.None;
-        mTransformType3D = TransformType3D.DefaultOpenSimplex2;
+        mTransformType3D = TransformType3D.None;
         mFractalType = FractalType.None;
         mOctaves = 3;
         mLacunarity = 2.0f;
@@ -590,7 +591,7 @@ public struct FastNoiseLite
         return t < 1 ? t : 2 - t;
     }
 
-    private void CalculateFractalBounding()
+    public void CalculateFractalBounding()
     {
         float gain = FastAbs(mGain);
         float amp = gain;
@@ -2015,21 +2016,25 @@ public struct FastNoiseLite
     // White noise
 
     // 32 bits precision
+    // private float SingleWhiteNoise(int seed, FNLfloat x, FNLfloat y)
+    // {
+    //     long hashX = Convert.ToInt64(x) ^ seed;
+    //     long hashZ = Convert.ToInt64(y) ^ seed;
+    //
+    //     long hash = ((hashX ^ ((long)((ulong)hashX >> 16))) + ((hashZ ^ ((long)((ulong)hashZ >> 16))) << 16)) ^ seed;
+    //     hash ^= ((long)((ulong)hash >> 16));
+    //     hash *= 0x85ebca6b;
+    //     hash ^= ((long)((ulong)hash >> 13));
+    //     hash *= 0xc2b2ae35;
+    //     hash ^= ((long)((ulong)hash >> 16));
+    //
+    //     return Convert.ToInt64(hash);
+    // } 
+    
     private float SingleWhiteNoise(int seed, FNLfloat x, FNLfloat y)
     {
-        long hashX = Convert.ToInt64(x) ^ seed;
-        long hashZ = Convert.ToInt64(y) ^ seed;
-    
-        long hash = ((hashX ^ ((long)((ulong)hashX >> 16))) + ((hashZ ^ ((long)((ulong)hashZ >> 16))) << 16)) ^ seed;
-        hash ^= ((long)((ulong)hash >> 16));
-        hash *= 0x85ebca6b;
-        hash ^= ((long)((ulong)hash >> 13));
-        hash *= 0xc2b2ae35;
-        hash ^= ((long)((ulong)hash >> 16));
-    
-        return Convert.ToInt64(hash);
+        return ValCoord(seed,FastFloor(x),FastFloor(y));
     } 
-    
     
     // Value Noise
 

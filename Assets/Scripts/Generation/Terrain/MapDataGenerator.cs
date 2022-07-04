@@ -1,19 +1,8 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using DefaultNamespace;
-using Sirenix.OdinInspector;
-using TMPro;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.XR;
-using Random = UnityEngine.Random;
 
 
 public class MapDataGenerator : MonoBehaviour
@@ -21,12 +10,10 @@ public class MapDataGenerator : MonoBehaviour
     private static MapDataGenerator instance;
     public static MapDataGenerator Instance => instance;
 
-    public int seed;
-    
-    [ShowInInspector] private const int chunkSize = 16;
-    [ShowInInspector] public const int chunkHeight = 128;
-    [ShowInInspector] public const float threshold = 0;
-    [ShowInInspector] public int resolution = 2;
+    [SerializeField] private const int chunkSize = 16;
+    [SerializeField] public const int chunkHeight = 128;
+    [SerializeField] public const float threshold = 0;
+    [SerializeField] public int resolution = 2;
     public static int ChunkSize => chunkSize;
     public int supportedChunkSize => ChunkSize + resolution * 3;
     
@@ -56,7 +43,7 @@ public class MapDataGenerator : MonoBehaviour
 
     private void Start()
     {
-        vanillaFunction = new VanillaFunction(seed);
+        vanillaFunction = new VanillaFunction(GenerationInfo.GetRandomSeed());
     }
 
     // First job to be called from CreateChunk to generate MapData 

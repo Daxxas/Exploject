@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Sirenix.OdinInspector;
 using Unity.Jobs;
 using UnityEditor;
 using UnityEngine;
@@ -28,7 +27,7 @@ public class EndlessTerrain : MonoBehaviour
     [SerializeField] private GameObject chunkObject;
     [SerializeField] private Transform mapParent;
     
-    [ShowInInspector] public static Vector2 viewerPosition;
+    [SerializeField] public static Vector2 viewerPosition;
     
     private Dictionary<Vector2, TerrainChunk> terrainChunkDic = new Dictionary<Vector2, TerrainChunk>();
     private FastPriorityQueue<ChunkPos> chunkLoadQueue = new FastPriorityQueue<ChunkPos>(15000);

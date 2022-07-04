@@ -16,11 +16,11 @@ public class BiomeVisualizerEditor : Editor
 
         if (GUILayout.Button("Generate pipeline (random seed)"))
         {
-            biomeVisualizer.GenerateRandomTexture();
+            // biomeVisualizer.GenerateRandomTexture();
         }
         if (GUILayout.Button("Generate pipeline (with seed)"))
         {
-            biomeVisualizer.GenerateRandomTexture(false);
+            // biomeVisualizer.GenerateRandomTexture(false);
         }
         
         GUILayout.Space(10);

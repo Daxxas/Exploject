@@ -5,14 +5,15 @@ public class ChunkBiome
     public Vector2 origin;
     public int width;
     private int offset;
-    public int[,] data;
+    public string[,] data;
 
-    public int this[int i, int j]
+    public string this[int i, int j]
     {
-        get
+        get 
         {
             return this.data[i,j];   
         }
+        set => this.data[i, j] = value;
     }
 
     public static ChunkBiome Copy(ChunkBiome biome)

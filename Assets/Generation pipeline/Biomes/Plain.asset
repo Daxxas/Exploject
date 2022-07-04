@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67dc506164304cfebb1c1418aae4cd7e, type: 3}
   m_Name: Plain
   m_EditorClassIdentifier: 
-  id: 1
+  id: PLAIN
   color: {r: 0.078431375, g: 0.9607844, b: 0.16470589, a: 1}
