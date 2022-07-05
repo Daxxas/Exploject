@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 868536a85e964021a22a62dbf3735213, type: 3}
   m_Name: MainPipeline
   m_EditorClassIdentifier: 
-  initialSize: 5
+  initialSize: 19
   sourceInitialBiomes:
     mSeed: 4126
     mFrequency: 0.4
@@ -37,5 +37,4 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a36e35319f79a644ea7207f743f4d81a, type: 2}
   - {fileID: 11400000, guid: a36e35319f79a644ea7207f743f4d81a, type: 2}
   - {fileID: 11400000, guid: a36e35319f79a644ea7207f743f4d81a, type: 2}
-  - {fileID: 11400000, guid: a36e35319f79a644ea7207f743f4d81a, type: 2}
-  - {fileID: 11400000, guid: a36e35319f79a644ea7207f743f4d81a, type: 2}
+  - {fileID: 11400000, guid: 33ba34cf660c4f045b1326fe5cb6b23f, type: 2}
