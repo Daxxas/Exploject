@@ -7,22 +7,24 @@ public class BiomeVisualizer : MonoBehaviour
 {
     [SerializeField] private BiomeGenerator biomeGenerator;
     [SerializeField] private int seed = 2;
+    [SerializeField] private Vector2 offset = Vector2.zero;
 
     
     [ContextMenu("Generate Texture")]
     public void GenerateRandomTexture()
     {
         GenerationInfo.Seed = seed;
-        ChunkBiome chunkBiome = biomeGenerator.GetChunkBiome(Vector2.zero, GenerationInfo.Seed);
+        ChunkBiome chunkBiome = biomeGenerator.GetChunkBiome(offset, GenerationInfo.Seed);
         Texture2D texture = new Texture2D(chunkBiome.width,chunkBiome.width);
         texture.filterMode = FilterMode.Point;
-        transform.localScale = new Vector3(chunkBiome.width, chunkBiome.width, 1);
         
         for (int x = 0; x < chunkBiome.width; x++)
         {
             for (int z = 0; z < chunkBiome.width; z++)
             {
-                texture.SetPixel(x,z, biomeGenerator.Pipeline.initialBiomes.GetBiomeFromId(chunkBiome[x, z]).color);
+                Color pixelColor = biomeGenerator.Pipeline.initialBiomes.GetBiomeFromId(chunkBiome[x, z]).color;
+
+                texture.SetPixel(x,z, pixelColor);
             }
         }
     
@@ -40,7 +42,7 @@ public class BiomeVisualizer : MonoBehaviour
         {
             noise = new FastNoiseLite()
             {
-                mSeed = (int)seed,
+                mSeed = seed,
                 mNoiseType = FastNoiseLite.NoiseType.WhiteNoise,
                 mFrequency = 1f
             };
@@ -48,7 +50,7 @@ public class BiomeVisualizer : MonoBehaviour
         }
         else
         {
-            chunkBiome = biomeGenerator.ApplyStage(chunkBiome, noise, index);
+            chunkBiome = biomeGenerator.ApplyStage(chunkBiome, index);
         }
 
         Texture2D texture = new Texture2D(chunkBiome.width,chunkBiome.width);

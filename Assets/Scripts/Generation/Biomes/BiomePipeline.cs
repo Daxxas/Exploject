@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Sirenix.Serialization;
+using Unity.VisualScripting;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "New Biome Pipeline", menuName = "Biomes/Pipeline", order = 0)]
@@ -10,7 +11,18 @@ public class BiomePipeline : ScriptableObject
     [SerializeField] public WeightedBiomeList initialBiomes;
     public FastNoiseLite sourceInitialBiomes;
     public List<Stage> stages;
-
+    
+    public int GetExpandStageCount()
+    {
+        int count = 0;
+        stages.ForEach(stage =>
+        {
+            if (stage is Expand) count++;
+        });
+        
+        return count;
+    }
+    
     [ContextMenu("Force call OnEnable")]
     public void OnEnable()
     {

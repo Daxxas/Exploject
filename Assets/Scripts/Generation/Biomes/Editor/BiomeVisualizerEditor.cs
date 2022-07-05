@@ -14,29 +14,25 @@ public class BiomeVisualizerEditor : Editor
 
         BiomeVisualizer biomeVisualizer = (BiomeVisualizer) target;
 
-        if (GUILayout.Button("Generate pipeline (random seed)"))
+        if (GUILayout.Button("Generate pipeline"))
         {
-            // biomeVisualizer.GenerateRandomTexture();
-        }
-        if (GUILayout.Button("Generate pipeline (with seed)"))
-        {
-            // biomeVisualizer.GenerateRandomTexture(false);
+            biomeVisualizer.GenerateRandomTexture();
         }
         
         GUILayout.Space(10);
         
-        if (GUILayout.Button("Next step"))
-        {
-            if (stepCount == 0)
-            {
-                currentChunkBiome = biomeVisualizer.ApplyStep(new ChunkBiome(), stepCount);
-            }
-            else
-            {
-                currentChunkBiome = biomeVisualizer.ApplyStep(currentChunkBiome, stepCount);
-            }
-            stepCount++;
-        }
+        // if (GUILayout.Button("Next step"))
+        // {
+        //     if (stepCount == 0)
+        //     {
+        //         currentChunkBiome = biomeVisualizer.ApplyStep(new ChunkBiome());
+        //     }
+        //     else
+        //     {
+        //         currentChunkBiome = biomeVisualizer.ApplyStep(currentChunkBiome, stepCount);
+        //     }
+        //     stepCount++;
+        // }
         if (GUILayout.Button("Reset"))
         {
             stepCount = 0;

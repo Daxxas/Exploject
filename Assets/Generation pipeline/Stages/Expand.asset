@@ -12,3 +12,41 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 066f0882c5c84d68bbd0baa16a84c855, type: 3}
   m_Name: Expand
   m_EditorClassIdentifier: 
+  noise:
+    mSeed: 4126
+    mFrequency: 0
+    mNoiseType: 0
+    mRotationType3D: 0
+    mTransformType3D: 0
+    mFractalType: 0
+    mOctaves: 0
+    mLacunarity: 0
+    mGain: 0
+    mWeightedStrength: 0
+    mPingPongStength: 0
+    mFractalBounding: 0
+    mCellularDistanceFunction: 0
+    mCellularReturnType: 0
+    mCellularJitterModifier: 0
+    mDomainWarpType: 0
+    mWarpTransformType3D: 0
+    mDomainWarpAmp: 0
+  noise:
+    mSeed: 4126
+    mFrequency: 10
+    mNoiseType: 6
+    mRotationType3D: 0
+    mTransformType3D: 0
+    mFractalType: 0
+    mOctaves: 0
+    mLacunarity: 0
+    mGain: 0
+    mWeightedStrength: 0
+    mPingPongStength: 0
+    mFractalBounding: 0
+    mCellularDistanceFunction: 0
+    mCellularReturnType: 0
+    mCellularJitterModifier: 0
+    mDomainWarpType: 0
+    mWarpTransformType3D: 0
+    mDomainWarpAmp: 0

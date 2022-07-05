@@ -3,5 +3,7 @@ using UnityEngine;
 using Random = Unity.Mathematics.Random;
 public abstract class Stage : ScriptableObject
 {
-    public abstract ChunkBiome Apply(int x, int z, ChunkBiome chunkBiome, FastNoiseLite noise);
+    public FastNoiseLite noise;
+    
+    public abstract ChunkBiome Apply(ChunkBiome chunkBiome);
 }

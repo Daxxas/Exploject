@@ -3,7 +3,7 @@ using Random = Unity.Mathematics.Random;
 
 public class Mutator : Stage
 {
-    public override ChunkBiome Apply(int x, int z, ChunkBiome chunkBiome, FastNoiseLite noise)
+    public override ChunkBiome Apply(ChunkBiome chunkBiome)
     {
         throw new System.NotImplementedException();
     }
