@@ -38,7 +38,7 @@ public class BiomeGenerator : MonoBehaviour
         {
             for (int z = 0; z < chunkBiome.width; z++)
             {
-                chunkBiome[x, z] = pipeline.initialBiomes.GetRandomBiome(pipeline.sourceInitialBiomes,x+(int)origin.x,z+(int)origin.y).Id;
+                // chunkBiome[x, z] = pipeline.initialBiomes.GetRandomBiome(pipeline.sourceInitialBiomes,x+(int)origin.x,z+(int)origin.y).Id;
             }
         }
 

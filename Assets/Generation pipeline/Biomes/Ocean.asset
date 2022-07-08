@@ -12,5 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67dc506164304cfebb1c1418aae4cd7e, type: 3}
   m_Name: Ocean
   m_EditorClassIdentifier: 
-  id: OCEAN
   color: {r: 0, g: 0.15949917, b: 1, a: 1}

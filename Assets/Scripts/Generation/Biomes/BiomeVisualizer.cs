@@ -22,9 +22,9 @@ public class BiomeVisualizer : MonoBehaviour
         {
             for (int z = 0; z < chunkBiome.width; z++)
             {
-                Color pixelColor = biomeGenerator.Pipeline.initialBiomes.GetBiomeFromId(chunkBiome[x, z]).color;
-
-                texture.SetPixel(x,z, pixelColor);
+                // Color pixelColor = biomeGenerator.Pipeline.initialBiomes.GetBiomeFromId(chunkBiome[x, z]).color;
+                //
+                // texture.SetPixel(x,z, pixelColor);
             }
         }
     

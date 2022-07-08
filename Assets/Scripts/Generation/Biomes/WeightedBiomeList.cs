@@ -123,7 +123,40 @@ public class WeightedBiomeList : IList<WeightedBiome>
 }
 
 [Serializable]
-public struct WeightedBiome
+public class UnitySerializedDictionary : ISerializationCallbackReceiver
+{
+    [SerializeField]
+    private List<WeightedBiome> valueList = new ();
+
+    [SerializeField]
+    int testvalue = 2;
+    
+    [NonSerialized]
+    private Dictionary<string, WeightedBiome> valueDic = new ();
+    
+    void ISerializationCallbackReceiver.OnAfterDeserialize()
+    {
+        valueList.Clear();
+        foreach (var item in valueDic)
+        {
+            // this.valueData.Add(item.Value);
+            valueList.Add(item.Value);
+        }
+    }
+    
+    void ISerializationCallbackReceiver.OnBeforeSerialize()
+    {
+        this.valueDic.Clear();
+    
+        foreach (var item in valueList)
+        {
+            this.valueDic.Add(item.biome.Id, item);
+        }
+    }
+}
+
+[Serializable]
+public class WeightedBiome
 {
     public Biome biome;
     public int weight;
