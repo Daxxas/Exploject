@@ -8,7 +8,7 @@ using UnityEngine;
 public class BiomePipeline : ScriptableObject
 {
     public int initialSize = 3;
-    [SerializeField] public UnitySerializedDictionary initialBiomes;    
+    [SerializeField] public WeightedBiomeList initialBiomes;
     public FastNoiseLite sourceInitialBiomes;
     public List<Stage> stages;
     
@@ -26,7 +26,7 @@ public class BiomePipeline : ScriptableObject
     [ContextMenu("Force call OnEnable")]
     public void OnEnable()
     {
-        // initialBiomes.UpdateDictionnary();
+        initialBiomes.UpdateDictionnary();
     }
 
     [ContextMenu("Update source noise")]

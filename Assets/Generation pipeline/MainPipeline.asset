@@ -13,11 +13,6 @@ MonoBehaviour:
   m_Name: MainPipeline
   m_EditorClassIdentifier: 
   initialSize: 19
-  initialBiomes:
-    valueList:
-    - biome: {fileID: 11400000, guid: 50e5372f0736dc74a846576a48805391, type: 2}
-      weight: 0
-    testvalue: 45
   sourceInitialBiomes:
     mSeed: 4126
     mFrequency: 0.4
