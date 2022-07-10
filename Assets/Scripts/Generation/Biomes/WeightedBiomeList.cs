@@ -8,38 +8,30 @@ using Sirenix.Serialization;
 using UnityEngine;
 
 [Serializable]
-public class WeightedBiomeList : IList<WeightedBiome>
+public class WeightedBiomeList
 {
-    [NonSerialized, HideInInspector]
-    private Dictionary<string, WeightedBiome> biomes = new Dictionary<string, WeightedBiome>();
+    [SerializeField]
     private List<WeightedBiome> biomesList = new List<WeightedBiome>();
+    [SerializeField]
+    public FastNoiseLite sourceInitialBiomes;
+
     private int TotalWeight()
     {
         int total = 0;
-        foreach (var biome in this)
+        foreach (var biome in biomesList)
         {
             total += biome.weight;
         }
         return total;
     }
-
-    public void UpdateDictionnary()
+    
+    public Biome GetRandomBiome(int x, int z)
     {
-        biomes.Clear();
-        foreach (var biome in biomesList)
-        {
-            if(biome.biome != null)
-                biomes.Add(biome.biome.Id, biome);
-        }
-    }
-
-    public Biome GetRandomBiome(FastNoiseLite noise, int x, int z)
-    {
-        int randomNumber = MathUtil.NormalizeIndex(noise.GetNoise(x, z), TotalWeight());
+        int randomNumber = MathUtil.NormalizeIndex(sourceInitialBiomes.GetNoise(x, z), TotalWeight());
         
         WeightedBiome selectedBiome = this[0];
 
-        foreach (var weightedBiome in this)
+        foreach (var weightedBiome in biomesList)
         {
             if (randomNumber < weightedBiome.weight)
             {
@@ -53,68 +45,7 @@ public class WeightedBiomeList : IList<WeightedBiome>
         return selectedBiome.biome;
     }
 
-    public Biome GetBiomeFromId(string id)
-    {
-        return biomes[id].biome;
-    }
-
-    public IEnumerator<WeightedBiome> GetEnumerator()
-    {
-        foreach (var biome in biomesList)
-        {
-            yield return biome;
-        }
-    }
-
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
-    }
-
-    public void Add(WeightedBiome item)
-    {
-        // biomes.Add(item.biome.Id, item);
-        biomesList.Add(item);
-    }
-
-    public void Clear()
-    {
-        biomes.Clear();
-        biomesList.Clear();
-    }
-
-    public bool Contains(WeightedBiome item)
-    {
-        return biomesList.Contains(item);
-    }
-
-    public void CopyTo(WeightedBiome[] array, int arrayIndex)
-    {
-        biomesList.CopyTo(array, arrayIndex);
-    }
-
-    public bool Remove(WeightedBiome item)
-    {
-        return biomesList.Remove(item);
-    }
-
-    public int Count { get => biomesList.Count; }
-    public bool IsReadOnly { get => false; }
-    public int IndexOf(WeightedBiome item)
-    {
-        return biomesList.IndexOf(item);
-    }
-
-    public void Insert(int index, WeightedBiome item)
-    {
-        biomesList.Insert(index, item);
-    }
-
-    public void RemoveAt(int index)
-    {
-        biomesList.RemoveAt(index);
-    }
-
+    
     public WeightedBiome this[int index]
     {
         get => biomesList[index];

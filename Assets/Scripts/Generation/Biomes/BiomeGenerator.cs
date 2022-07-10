@@ -24,21 +24,14 @@ public class BiomeGenerator : MonoBehaviour
     
     private ChunkBiome InitChunk(Vector2 origin, int seed)
     {
-        FastNoiseLite noise = new FastNoiseLite()
-        {
-            mSeed = seed,
-            mNoiseType = FastNoiseLite.NoiseType.WhiteNoise,
-            mFrequency = 10f
-        };
-        
         ChunkBiome chunkBiome = new ChunkBiome(pipeline.initialSize, origin);
-        pipeline.sourceInitialBiomes.SetSeed(noise.mSeed);
+        pipeline.initialBiomes.sourceInitialBiomes.SetSeed(seed);
 
         for (int x = 0; x < chunkBiome.width; x++)
         {
             for (int z = 0; z < chunkBiome.width; z++)
             {
-                chunkBiome[x, z] = pipeline.initialBiomes.GetRandomBiome(pipeline.sourceInitialBiomes,x+(int)origin.x,z+(int)origin.y).Id;
+                chunkBiome[x, z] = pipeline.initialBiomes.GetRandomBiome(x+(int)origin.x,z+(int)origin.y);
             }
         }
 
@@ -54,6 +47,6 @@ public class BiomeGenerator : MonoBehaviour
     {
         chunkBiome.origin = origin;
         chunkBiome.width = pipeline.initialSize;
-        chunkBiome.data = new string[pipeline.initialSize, pipeline.initialSize];
+        chunkBiome.data = new Biome[pipeline.initialSize, pipeline.initialSize];
     }
 }

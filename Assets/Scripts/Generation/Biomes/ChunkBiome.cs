@@ -5,9 +5,9 @@ public class ChunkBiome
     public Vector2 origin;
     public int width;
     private int offset;
-    public string[,] data;
+    public Biome[,] data;
 
-    public string this[int i, int j]
+    public Biome this[int i, int j]
     {
         get 
         {
@@ -19,11 +19,11 @@ public class ChunkBiome
     public ChunkBiome(int width, Vector2 origin) {
         width += 4;
         this.width = width;
-        data = new string[width,width];
+        data = new Biome[width,width];
         this.origin = origin;
         this.offset = 2;
     }
-    private ChunkBiome(string[,] data, Vector2 origin, int width, int offset) {
+    private ChunkBiome(Biome[,] data, Vector2 origin, int width, int offset) {
         this.data = data;
         this.origin = origin;
         this.width = width;
@@ -32,10 +32,10 @@ public class ChunkBiome
     
     public ChunkBiome Expand(Expand expander)
     {
-        string[,] old = data;
+        Biome[,] old = data;
         int newWidth = width * 2 - 1;
 
-        data = new string[newWidth, newWidth];
+        data = new Biome[newWidth, newWidth];
 
         for (int x = 0; x < width; x++)
         {

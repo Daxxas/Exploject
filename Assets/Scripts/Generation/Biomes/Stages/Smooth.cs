@@ -17,17 +17,17 @@ public class Smooth : Stage
         return chunkBiome;
     }
 
-    private string SmoothPosition(ref ChunkBiome chunkBiome, int x, int z, FastNoiseLite noise)
+    private Biome SmoothPosition(ref ChunkBiome chunkBiome, int x, int z, FastNoiseLite noise)
     {
         if (x == 0 || z == 0  || x == chunkBiome.width - 1 || z == chunkBiome.width - 1)
         {
             return chunkBiome[x, z];
         }
         
-        string top = chunkBiome[x + 1, z];
-        string bottom = chunkBiome[x - 1, z];
-        string left = chunkBiome[x, z+1];
-        string right = chunkBiome[x, z-1];
+        Biome top = chunkBiome[x + 1, z];
+        Biome bottom = chunkBiome[x - 1, z];
+        Biome left = chunkBiome[x, z+1];
+        Biome right = chunkBiome[x, z-1];
         
         bool vert = (top ==  bottom);
         bool horiz = (left == right);
