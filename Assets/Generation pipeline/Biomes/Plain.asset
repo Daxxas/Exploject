@@ -14,3 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: PLAIN
   color: {r: 0.078431375, g: 0.9607844, b: 0.16470589, a: 1}
+  serializedTags:
+  - PLAIN
+  - LAND

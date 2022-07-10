@@ -70,7 +70,8 @@ public struct FastNoiseLite
         Perlin,
         ValueCubic,
         Value,
-        WhiteNoise
+        WhiteNoise,
+        Constant
     };
 
     public enum RotationType3D 
@@ -753,6 +754,8 @@ public struct FastNoiseLite
                 return SingleValue(seed, x, y);
             case NoiseType.WhiteNoise:
                 return SingleWhiteNoise(seed, x, y);
+            case NoiseType.Constant:
+                return 1;
             default:
                 return 0;
         }

@@ -1,8 +1,9 @@
+using Unity.Mathematics;
 using UnityEngine;
 
 public class ChunkBiome
 {
-    public Vector2 origin;
+    public int2 origin;
     public int width;
     private int offset;
     public Biome[,] data;
@@ -16,18 +17,24 @@ public class ChunkBiome
         set => this.data[i, j] = value;
     }
     
-    public ChunkBiome(int width, Vector2 origin) {
+    public ChunkBiome(int width, int2 origin) {
         width += 4;
         this.width = width;
         data = new Biome[width,width];
         this.origin = origin;
         this.offset = 2;
     }
-    private ChunkBiome(Biome[,] data, Vector2 origin, int width, int offset) {
+    
+    private ChunkBiome(Biome[,] data, int2 origin, int width, int offset) {
         this.data = data;
         this.origin = origin;
         this.width = width;
         this.offset = 2 * offset;
+    }
+
+    public ChunkBiome()
+    {
+        
     }
     
     public ChunkBiome Expand(Expand expander)
@@ -61,7 +68,7 @@ public class ChunkBiome
             }
         }
         
-        Vector2 newOrigin = new Vector2(origin.x * 2 - 1, origin.y * 2 - 1);
+        int2 newOrigin = new int2(origin.x * 2 - 1, origin.y * 2 - 1);
         
         return new ChunkBiome(data, newOrigin, newWidth, offset);
     }

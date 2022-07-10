@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 67dc506164304cfebb1c1418aae4cd7e, type: 3}
-  m_Name: Desert
+  m_Name: Self
   m_EditorClassIdentifier: 
-  id: DESERT
-  color: {r: 1, g: 0.87176263, b: 0, a: 1}
+  isSelf: 1
+  id: 
+  color: {r: 0, g: 0, b: 0, a: 0}
   serializedTags:
-  - DESERT
-  - LAND
+  - 

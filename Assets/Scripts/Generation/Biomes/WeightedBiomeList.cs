@@ -12,8 +12,6 @@ public class WeightedBiomeList
 {
     [SerializeField]
     private List<WeightedBiome> biomesList = new List<WeightedBiome>();
-    [SerializeField]
-    public FastNoiseLite sourceInitialBiomes;
 
     private int TotalWeight()
     {
@@ -25,9 +23,9 @@ public class WeightedBiomeList
         return total;
     }
     
-    public Biome GetRandomBiome(int x, int z)
+    public Biome GetRandomBiome(FastNoiseLite noise, int x, int z)
     {
-        int randomNumber = MathUtil.NormalizeIndex(sourceInitialBiomes.GetNoise(x, z), TotalWeight());
+        int randomNumber = MathUtil.NormalizeIndex(noise.GetNoise(x, z), TotalWeight());
         
         WeightedBiome selectedBiome = this[0];
 

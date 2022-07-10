@@ -8,9 +8,11 @@ using UnityEngine;
 public class BiomePipeline : ScriptableObject
 {
     public int initialSize = 3;
-    [SerializeField] public WeightedBiomeList initialBiomes;
-    public List<Stage> stages;
+    public int biomeStep => initialSize + 2;
     
+    [SerializeField] public WeightedBiomeList initialBiomes;
+    [SerializeField] public FastNoiseLite sourceInitialBiomes;
+    public List<Stage> stages;
     public int GetExpandStageCount()
     {
         int count = 0;
@@ -24,7 +26,7 @@ public class BiomePipeline : ScriptableObject
     
     public void OnValidate()
     {
-        initialBiomes.sourceInitialBiomes.CalculateFractalBounding();
+        sourceInitialBiomes.CalculateFractalBounding();
     }
 }
 
