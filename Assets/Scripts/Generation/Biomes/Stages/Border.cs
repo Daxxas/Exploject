@@ -9,7 +9,7 @@ public class Border : Stage
     public string replaceTag;
     public WeightedBiomeList replacingBiomes;
 
-    public override ChunkBiome Apply(ChunkBiome chunkBiome)
+    public override ChunkBiome Apply(ChunkBiome chunkBiome, int seed)
     {
         for (int x = 0; x < chunkBiome.width; x++)
         {
@@ -32,7 +32,7 @@ public class Border : Stage
                             
                             if (chunkBiome[x + xi, z + zi].tags.Contains(replaceTag))
                             {
-                                Biome newBiome = replacingBiomes.GetRandomBiome(noise, x, z);
+                                Biome newBiome = replacingBiomes.GetRandomBiome(noise, x, z, seed);
                                 if (!newBiome.isSelf)
                                 {
                                     chunkBiome[x + xi, z + zi] = newBiome;

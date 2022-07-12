@@ -5,7 +5,7 @@
 
     public TestNoise3D(int seed)
     {
-        noise = new FastNoiseLite(seed)
+        noise = new FastNoiseLite()
         {
             mNoiseType = FastNoiseLite.NoiseType.OpenSimplex2,
             mTransformType3D = FastNoiseLite.TransformType3D.DefaultOpenSimplex2,
@@ -14,8 +14,8 @@
         };
     }
 
-    public float GetNoise(float x, float y, float z)
+    public float GetNoise(int seed, float x, float y, float z)
     {
-        return noise.GetNoise(x, y, z);
+        return noise.GetNoise(seed, x, y, z);
     }
 }

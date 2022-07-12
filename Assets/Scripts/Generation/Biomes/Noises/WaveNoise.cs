@@ -6,7 +6,7 @@
 
     public static void SetupNoise(int seed)
     {
-        noise = new FastNoiseLite(seed);
+        noise = new FastNoiseLite();
         noise.SetDomainWarpType(FastNoiseLite.DomainWarpType.OpenSimplex2);
         noise.SetDomainWarpAmp(20);
         noise.SetNoiseType(FastNoiseLite.NoiseType.Cellular);
@@ -15,8 +15,8 @@
         isInit = true;
     }
 
-    public static float GetNoise(float x, float y, float z)
+    public static float GetNoise(int seed, float x, float y, float z)
     {
-        return noise.GetNoise(x, z);
+        return noise.GetNoise(seed, x, z);
     }
 }

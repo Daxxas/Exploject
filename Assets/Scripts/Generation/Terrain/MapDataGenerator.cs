@@ -1,3 +1,5 @@
+using System;
+using System.Runtime.InteropServices;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
@@ -26,6 +28,9 @@ public class MapDataGenerator : MonoBehaviour
     // so we have 16 blocks per chunk, hence the + 3
 
     private VanillaFunction vanillaFunction;
+    private FunctionPointer<FunctionDelegate> compiledDelegate;
+
+    public delegate float FunctionDelegate(int seed, float x, float y, float z);
 
     [ExecuteAlways]
     private void Awake()
@@ -43,26 +48,27 @@ public class MapDataGenerator : MonoBehaviour
 
     private void Start()
     {
-        vanillaFunction = new VanillaFunction(GenerationInfo.GetRandomSeed());
+        compiledDelegate = BurstCompiler.CompileFunctionPointer<FunctionDelegate>(VanillaFunction.GetResult);
     }
 
+
     // First job to be called from CreateChunk to generate MapData 
-    [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]
+    [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)] 
     public struct MapDataJob : IJobParallelFor
     {
         // Input data
         public float offsetx;
         public float offsetz;
 
+        public int seed;
         public int resolution;
         // Output data
         public NativeArray<float> generatedMap;
 
         // Function reference
-        public VanillaFunction vanillaFunction;
+        public FunctionPointer<FunctionDelegate> vanillaFunction;
         
         public int supportedChunkSize => ChunkSize + resolution * 3;
-
         
         public void Execute(int idx)
         {
@@ -73,7 +79,7 @@ public class MapDataGenerator : MonoBehaviour
             if (x % resolution == 0 && y % resolution == 0 && z % resolution == 0)
             {
                 // Since it's a IJobParallelFor, job is called for every idx, filling the generatedMap in parallel
-                generatedMap[idx] = vanillaFunction.GetResult(x + (offsetx), y, z + (offsetz));
+                generatedMap[idx] = vanillaFunction.Invoke(seed, x + (offsetx), y, z + (offsetz));
             }
             else
             {
@@ -90,7 +96,8 @@ public class MapDataGenerator : MonoBehaviour
             // Inputs
             offsetx = offset.x-resolution,
             offsetz = offset.y-resolution,
-            vanillaFunction = vanillaFunction,
+            seed = GenerationInfo.seed,
+            vanillaFunction = compiledDelegate,
             resolution = resolution,
             // Output data
             generatedMap = generatedMap

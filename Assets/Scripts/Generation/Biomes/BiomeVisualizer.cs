@@ -34,8 +34,6 @@ public class BiomeVisualizer : MonoBehaviour
     
         GetComponent<Renderer>().sharedMaterial.mainTexture = texture;
     }
-    
-    
 
     public void ResetVisualization()
     {
