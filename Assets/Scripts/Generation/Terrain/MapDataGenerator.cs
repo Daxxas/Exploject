@@ -9,6 +9,8 @@ using UnityEngine;
 
 public class MapDataGenerator : MonoBehaviour
 {
+    [SerializeField] private Biome debugBiome;
+    
     private static MapDataGenerator instance;
     public static MapDataGenerator Instance => instance;
 
@@ -28,9 +30,8 @@ public class MapDataGenerator : MonoBehaviour
     // so we have 16 blocks per chunk, hence the + 3
 
     private VanillaEquation vanillaEquation;
-    private FunctionPointer<FunctionDelegate> compiledDelegate;
+    private FunctionPointer<TerrainEquation.TerrainEquationDelegate> compiledDelegate;
 
-    public delegate float FunctionDelegate(int seed, float x, float y, float z);
 
     [ExecuteAlways]
     private void Awake()
@@ -48,7 +49,9 @@ public class MapDataGenerator : MonoBehaviour
 
     private void Start()
     {
-        compiledDelegate = BurstCompiler.CompileFunctionPointer<FunctionDelegate>(VanillaEquation.GetResult);
+        TerrainEquation.TerrainEquationDelegate equation = (TerrainEquation.TerrainEquationDelegate) Delegate.CreateDelegate(typeof(TerrainEquation.TerrainEquationDelegate), debugBiome.TerrainEquation);
+ 
+        compiledDelegate = BurstCompiler.CompileFunctionPointer<TerrainEquation.TerrainEquationDelegate>(equation);
     }
 
 
@@ -66,7 +69,7 @@ public class MapDataGenerator : MonoBehaviour
         public NativeArray<float> generatedMap;
 
         // Function reference
-        public FunctionPointer<FunctionDelegate> vanillaFunction;
+        public FunctionPointer<TerrainEquation.TerrainEquationDelegate> vanillaFunction;
         
         public int supportedChunkSize => ChunkSize + resolution * 3;
         

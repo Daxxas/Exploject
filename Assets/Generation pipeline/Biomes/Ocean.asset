@@ -18,3 +18,5 @@ MonoBehaviour:
   serializedTags:
   - OCEAN
   - WATER
+  typeEquation: MountainEquation
+  methodEquation: 

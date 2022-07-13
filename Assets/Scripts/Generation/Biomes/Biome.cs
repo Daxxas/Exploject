@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using Sirenix.OdinInspector;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
@@ -24,8 +25,13 @@ public class Biome : ScriptableObject, ISerializationCallbackReceiver
     private List<string> serializedTags = new List<string>();
     public HashSet<string> tags = new HashSet<string>();
 
-    public Type test;
-
+    [SerializeField, HideInInspector]
+    public string typeEquation;
+    
+    [SerializeField, HideInInspector]
+    public string methodEquation;
+    public MethodInfo TerrainEquation => Type.GetType(typeEquation)?.GetMethod(methodEquation);
+    
     public BiomeHolder BuildBiome()
     {
         NativeParallelHashSet<int> burstTags = new NativeParallelHashSet<int>(tags.Count, Allocator.Persistent);

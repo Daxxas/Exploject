@@ -254,7 +254,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   biomeGenerator: {fileID: 75598017}
-  seed: 4961
+  seed: 6061
   offset:
     x: 0
     y: 0
@@ -733,6 +733,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7183de83980f17e4d9b2f6441ad8af76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  debugBiome: {fileID: 11400000, guid: 50e5372f0736dc74a846576a48805391, type: 2}
   resolution: 2
 --- !u!4 &2127954276
 Transform:
@@ -762,7 +763,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   chunkViewDistance: 16
-  farChunkViewDistance: 32
+  farChunkViewDistance: 24
   maxChunksPerFrame: 2
   viewer: {fileID: 433478268}
   chunkObject: {fileID: 4480448243231049190, guid: 649b64edaf196d64b80094718a2edf9a, type: 3}

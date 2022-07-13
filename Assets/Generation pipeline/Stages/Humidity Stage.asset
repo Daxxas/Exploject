@@ -13,15 +13,14 @@ MonoBehaviour:
   m_Name: Humidity Stage
   m_EditorClassIdentifier: 
   noise:
-    mSeed: 4261
     mFrequency: 0.025
     mNoiseType: 0
     mRotationType3D: 0
     mTransformType3D: 0
     mFractalType: 0
-    mOctaves: 4
-    mLacunarity: 2
-    mGain: 0.3
+    mOctaves: 0
+    mLacunarity: 0
+    mGain: 0
     mWeightedStrength: 0
     mPingPongStength: 0
     mFractalBounding: 1
@@ -31,7 +30,7 @@ MonoBehaviour:
     mDomainWarpType: 0
     mWarpTransformType3D: 0
     mDomainWarpAmp: 0
-  salt: 4
+  salt: 44
   replacedTags:
   - LAND
   replacingBiomes:
