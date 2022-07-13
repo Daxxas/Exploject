@@ -19,7 +19,7 @@ public class Replace : Stage
                 {
                     if (chunkBiome[x, z].tags.Contains(tag))
                     {   
-                        Biome newBiome = replacingBiomes.GetRandomBiome(noise, seed + salt, x, z);
+                        Biome newBiome = replacingBiomes.GetRandomBiome(noise, seed + salt, x + chunkBiome.origin.x, z + chunkBiome.origin.y);
                         if (!newBiome.isSelf)
                         {
                             chunkBiome[x, z] = newBiome;
