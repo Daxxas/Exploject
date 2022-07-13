@@ -6,4 +6,9 @@ public abstract class Stage : ScriptableObject
     public int salt;
     
     public abstract ChunkBiome Apply(ChunkBiome chunkBiome, int seed);
+
+    public void OnValidate()
+    {
+        noise.UpdateFractalBounding();
+    }
 }

@@ -23,9 +23,9 @@ public class WeightedBiomeList
         return total;
     }
     
-    public Biome GetRandomBiome(FastNoiseLite noise, int x, int z, int seed)
+    public Biome GetRandomBiome(FastNoiseLite noise, int seed, int x, int z)
     {
-        int randomNumber = MathUtil.NormalizeIndex(noise.GetNoise(x, z, seed), TotalWeight());
+        int randomNumber = MathUtil.NormalizeIndex(noise.GetNoise(seed, x, z), TotalWeight());
         
         WeightedBiome selectedBiome = this[0];
 

@@ -5,7 +5,7 @@ public class Expand : Stage
 {
     public override ChunkBiome Apply(ChunkBiome chunkBiome, int seed)
     {
-        return chunkBiome.Expand(this, seed);
+        return chunkBiome.Expand(this, seed + salt);
     }
 
     public Biome GetMiddle(int x, int z, int seed, params Biome[] others)

@@ -32,7 +32,7 @@ public class Border : Stage
                             
                             if (chunkBiome[x + xi, z + zi].tags.Contains(replaceTag))
                             {
-                                Biome newBiome = replacingBiomes.GetRandomBiome(noise, x, z, seed);
+                                Biome newBiome = replacingBiomes.GetRandomBiome(noise, seed, x, z);
                                 if (!newBiome.isSelf)
                                 {
                                     chunkBiome[x + xi, z + zi] = newBiome;

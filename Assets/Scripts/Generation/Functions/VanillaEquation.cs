@@ -1,11 +1,9 @@
-﻿
-using System;
-using Unity.Burst;
+﻿using Unity.Burst;
 using Unity.Mathematics;
 
 
 [BurstCompile(CompileSynchronously = true)]
-public struct VanillaFunction
+public class VanillaEquation : TerrainEquation
 { 
     public static readonly PlainNoise plainNoise = new PlainNoise();
     private static readonly TestNoise3D testNoise3D = new TestNoise3D();

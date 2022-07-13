@@ -11,24 +11,6 @@ public class BiomeGenerator : MonoBehaviour
     [SerializeField] private Biome biome;
     public BiomePipeline Pipeline => pipeline;
 
-    readonly Test structTest = new Test();
-    [ContextMenu("test")]
-    public void test()
-    {
-        
-        var value = PlainNoise.GetNoise(1334, 5, 14);
-        Debug.Log(value);
-        // var value = structTest.ValueTest(5,10);
-    }
-
-    private struct Test
-    {
-        public readonly int ValueTest(int a, int b)
-        {
-            return a + b;
-        }
-    }
-    
     public ChunkBiome GetChunkBiome(int2 origin, int seed)
     {
         // TODO : Threadify this
@@ -51,7 +33,7 @@ public class BiomeGenerator : MonoBehaviour
         {
             for (int z = 0; z < chunkBiome.width; z++)
             {
-                chunkBiome[x, z] = pipeline.initialBiomes.GetRandomBiome(pipeline.sourceInitialBiomes, x+origin.x, z+origin.y, seed);
+                chunkBiome[x, z] = pipeline.initialBiomes.GetRandomBiome(pipeline.sourceInitialBiomes, seed, x+origin.x, z+origin.y);
             }
         }
 

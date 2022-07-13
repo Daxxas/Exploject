@@ -27,7 +27,7 @@ public class MapDataGenerator : MonoBehaviour
     // for 17 dots as chunk
     // so we have 16 blocks per chunk, hence the + 3
 
-    private VanillaFunction vanillaFunction;
+    private VanillaEquation vanillaEquation;
     private FunctionPointer<FunctionDelegate> compiledDelegate;
 
     public delegate float FunctionDelegate(int seed, float x, float y, float z);
@@ -48,7 +48,7 @@ public class MapDataGenerator : MonoBehaviour
 
     private void Start()
     {
-        compiledDelegate = BurstCompiler.CompileFunctionPointer<FunctionDelegate>(VanillaFunction.GetResult);
+        compiledDelegate = BurstCompiler.CompileFunctionPointer<FunctionDelegate>(VanillaEquation.GetResult);
     }
 
 

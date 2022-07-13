@@ -591,6 +591,11 @@ public struct FastNoiseLite
         return t < 1 ? t : 2 - t;
     }
 
+    public void UpdateFractalBounding()
+    {
+        mFractalBounding = CalculateFractalBounding(mGain, mOctaves);
+    }
+    
     public static float CalculateFractalBounding(float gain, int octaves)
     {
         float absgain = FastAbs(gain);

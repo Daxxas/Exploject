@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 using Sirenix.OdinInspector;
 using Unity.Collections;
@@ -22,7 +23,9 @@ public class Biome : ScriptableObject, ISerializationCallbackReceiver
     [HideIf("isSelf")] [SerializeField] 
     private List<string> serializedTags = new List<string>();
     public HashSet<string> tags = new HashSet<string>();
-    
+
+    public Type test;
+
     public BiomeHolder BuildBiome()
     {
         NativeParallelHashSet<int> burstTags = new NativeParallelHashSet<int>(tags.Count, Allocator.Persistent);

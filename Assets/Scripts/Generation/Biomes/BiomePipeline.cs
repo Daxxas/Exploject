@@ -26,7 +26,7 @@ public class BiomePipeline : ScriptableObject
     
     public void OnValidate()
     {
-        sourceInitialBiomes.mFractalBounding = FastNoiseLite.CalculateFractalBounding(sourceInitialBiomes.mGain, sourceInitialBiomes.mOctaves);
+        // sourceInitialBiomes.mFractalBounding = FastNoiseLite.CalculateFractalBounding(sourceInitialBiomes.mGain, sourceInitialBiomes.mOctaves);
     }
 }
 
