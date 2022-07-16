@@ -47,13 +47,6 @@ public class MapDataGenerator : MonoBehaviour
         }
     }
 
-    private void Start()
-    {
-        TerrainEquation.TerrainEquationDelegate equation = (TerrainEquation.TerrainEquationDelegate) Delegate.CreateDelegate(typeof(TerrainEquation.TerrainEquationDelegate), debugBiome.TerrainEquation);
- 
-        compiledDelegate = BurstCompiler.CompileFunctionPointer<TerrainEquation.TerrainEquationDelegate>(equation);
-    }
-
 
     // First job to be called from CreateChunk to generate MapData 
     [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)] 
@@ -69,7 +62,8 @@ public class MapDataGenerator : MonoBehaviour
         public NativeArray<float> generatedMap;
 
         // Function reference
-        public FunctionPointer<TerrainEquation.TerrainEquationDelegate> vanillaFunction;
+        [ReadOnly]
+        public NativeArray<FunctionPointer<TerrainEquation.TerrainEquationDelegate>> functionPointers;
         
         public int supportedChunkSize => ChunkSize + resolution * 3;
         
@@ -79,10 +73,12 @@ public class MapDataGenerator : MonoBehaviour
             int y = (idx / supportedChunkSize) % chunkHeight;
             int z = idx / (supportedChunkSize * chunkHeight);
 
+            int biomeIdx = supportedChunkSize * x + z;
+            
             if (x % resolution == 0 && y % resolution == 0 && z % resolution == 0)
             {
                 // Since it's a IJobParallelFor, job is called for every idx, filling the generatedMap in parallel
-                generatedMap[idx] = vanillaFunction.Invoke(seed, x + (offsetx), y, z + (offsetz));
+                generatedMap[idx] = functionPointers[biomeIdx].Invoke(seed, x + (offsetx), y, z + (offsetz));
             }
             else
             {
@@ -91,7 +87,7 @@ public class MapDataGenerator : MonoBehaviour
         }
     }
     
-    public JobHandle GenerateMapData(Vector2 offset, NativeArray<float> generatedMap)
+    public JobHandle GenerateMapData(Vector2 offset, NativeArray<FunctionPointer<TerrainEquation.TerrainEquationDelegate>> biomeFunctionPointers, NativeArray<float> generatedMap)
     {
         // Job to generate input map data for marching cube
         var mapDataJob = new MapDataJob()
@@ -100,13 +96,16 @@ public class MapDataGenerator : MonoBehaviour
             offsetx = offset.x-resolution,
             offsetz = offset.y-resolution,
             seed = GenerationInfo.seed,
-            vanillaFunction = compiledDelegate,
+            // Biome information
+            functionPointers = biomeFunctionPointers,
             resolution = resolution,
             // Output data
             generatedMap = generatedMap
         };
         
         JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 100);
+
+        biomeFunctionPointers.Dispose(mapDataHandle);
         
         return mapDataHandle;
     }

@@ -254,9 +254,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   biomeGenerator: {fileID: 75598017}
-  seed: 6061
-  offset:
-    x: 0
+  seed: 1401
+  chunksPreview: 10
+  testpos:
+    x: 113
     y: 0
 --- !u!114 &75598017
 MonoBehaviour:

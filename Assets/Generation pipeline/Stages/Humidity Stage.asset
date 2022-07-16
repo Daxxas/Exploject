@@ -18,8 +18,8 @@ MonoBehaviour:
     mRotationType3D: 0
     mTransformType3D: 0
     mFractalType: 0
-    mOctaves: 0
-    mLacunarity: 0
+    mOctaves: 1
+    mLacunarity: 0.02
     mGain: 0
     mWeightedStrength: 0
     mPingPongStength: 0
@@ -29,7 +29,7 @@ MonoBehaviour:
     mCellularJitterModifier: 0
     mDomainWarpType: 0
     mWarpTransformType3D: 0
-    mDomainWarpAmp: 0
+    mDomainWarpAmp: 500
   salt: 44
   replacedTags:
   - LAND

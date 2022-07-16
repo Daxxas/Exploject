@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Numerics;
 using TMPro;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -42,7 +43,8 @@ public class TerrainChunk : MonoBehaviour
     /// Initialize chunk and starts generation
     /// </summary>
     /// <param name="coord">Chunk coordinates</param>
-    /// <param name="dataGenerator"></param>
+    /// <param name="biomeFunctionPointers">2D Array of biomes for every xz positions</param>
+    /// <param name="biomesWidth"></param>
     /// <param name="resolution">Expected mesh resolution generation</param>
     /// <returns></returns>
     public TerrainChunk InitChunk(Vector2 coord, int resolution)
@@ -57,8 +59,10 @@ public class TerrainChunk : MonoBehaviour
 
         // Variables that will be filled & passed along jobs
         NativeArray<float> generatedMap = new NativeArray<float>(MapDataGenerator.chunkHeight * supportedChunkSize * supportedChunkSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        
+        NativeArray<FunctionPointer<TerrainEquation.TerrainEquationDelegate>> biomeFunctionPointers =  BiomeGenerator.Instance.GetBiomesForTerrainChunk(coord);
 
-        var mapDataHandle = MapDataGenerator.Instance.GenerateMapData(position, generatedMap);
+        var mapDataHandle = MapDataGenerator.Instance.GenerateMapData(position, biomeFunctionPointers, generatedMap);
 
         chunkMeshJob = GenerateChunkMesh(generatedMap, mapDataHandle);
         

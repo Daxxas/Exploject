@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 using Unity.Jobs;
 using UnityEditor;
 using UnityEngine;
 using Priority_Queue;
 using Unity.Collections;
+using Vector2 = UnityEngine.Vector2;
 
 public class EndlessTerrain : MonoBehaviour
 {
@@ -216,6 +218,11 @@ public class EndlessTerrain : MonoBehaviour
                 chunkToStopLoad.Enqueue(chunkPos);
             }
         }
+    }
+
+    private void GetBiomeForPos(Vector2 pos)
+    {
+        
     }
     
     

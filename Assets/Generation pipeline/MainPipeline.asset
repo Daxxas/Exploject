@@ -12,21 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 868536a85e964021a22a62dbf3735213, type: 3}
   m_Name: MainPipeline
   m_EditorClassIdentifier: 
-  initialSize: 20
+  initialSize: 4
   initialBiomes:
     biomesList:
-    - biome: {fileID: 11400000, guid: 5105e0f57fbd95747850c4e18a275b0e, type: 2}
-      weight: 30
     - biome: {fileID: 11400000, guid: 50e5372f0736dc74a846576a48805391, type: 2}
       weight: 70
+    - biome: {fileID: 11400000, guid: 5105e0f57fbd95747850c4e18a275b0e, type: 2}
+      weight: 30
   sourceInitialBiomes:
-    mSeed: 4360
-    mFrequency: 0.3
+    mFrequency: 0.1
     mNoiseType: 0
     mRotationType3D: 0
     mTransformType3D: 0
     mFractalType: 1
-    mOctaves: 4
+    mOctaves: 1
     mLacunarity: 2
     mGain: 0
     mWeightedStrength: 0
@@ -40,14 +39,11 @@ MonoBehaviour:
     mDomainWarpAmp: 0
   stages:
   - {fileID: 11400000, guid: a36e35319f79a644ea7207f743f4d81a, type: 2}
-  - {fileID: 11400000, guid: 3e867c5a67033874488702ba988ce255, type: 2}
+  - {fileID: 11400000, guid: a6a265dadb57ef84998310ff04faf80b, type: 2}
+  - {fileID: 11400000, guid: d14f251c4242a7143a95123e5fe6eb4d, type: 2}
   - {fileID: 11400000, guid: a36e35319f79a644ea7207f743f4d81a, type: 2}
-  - {fileID: 11400000, guid: a36e35319f79a644ea7207f743f4d81a, type: 2}
-  - {fileID: 11400000, guid: a36e35319f79a644ea7207f743f4d81a, type: 2}
-  - {fileID: 11400000, guid: 2ada6378828bcd0428ccacddbea2aea8, type: 2}
-  - {fileID: 11400000, guid: 9639ae87eea9a724ab25f67923cc2bdd, type: 2}
-  - {fileID: 11400000, guid: 33ba34cf660c4f045b1326fe5cb6b23f, type: 2}
-  - {fileID: 11400000, guid: 33ba34cf660c4f045b1326fe5cb6b23f, type: 2}
-  - {fileID: 11400000, guid: a36e35319f79a644ea7207f743f4d81a, type: 2}
-  - {fileID: 11400000, guid: a36e35319f79a644ea7207f743f4d81a, type: 2}
+  - {fileID: 11400000, guid: d14f251c4242a7143a95123e5fe6eb4d, type: 2}
+  - {fileID: 11400000, guid: a6a265dadb57ef84998310ff04faf80b, type: 2}
+  - {fileID: 11400000, guid: a6a265dadb57ef84998310ff04faf80b, type: 2}
+  - {fileID: 11400000, guid: d14f251c4242a7143a95123e5fe6eb4d, type: 2}
   - {fileID: 11400000, guid: 33ba34cf660c4f045b1326fe5cb6b23f, type: 2}

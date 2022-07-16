@@ -65,7 +65,6 @@ public class ChunkBiome
                 {
                     data[x * 2 + 1, z * 2 + 1] = expander.GetMiddle(x+1 + origin.x,z+1 + origin.y, seed, old[x, z], old[x + 1, z], old[ x + 1, z + 1], old[x, z + 1]);
                 }
-                
             }
         }
         

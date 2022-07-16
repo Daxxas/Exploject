@@ -8,20 +8,19 @@ using UnityEngine;
 public class BiomePipeline : ScriptableObject
 {
     public int initialSize = 3;
-    public int biomeStep => initialSize + 2;
     
     [SerializeField] public WeightedBiomeList initialBiomes;
     [SerializeField] public FastNoiseLite sourceInitialBiomes;
     public List<Stage> stages;
-    public int GetExpandStageCount()
+    public int GetChunkBiomeSize()
     {
-        int count = 0;
-        stages.ForEach(stage =>
+        int size = initialSize + 4;
+        foreach (var stage in stages)
         {
-            if (stage is Expand) count++;
-        });
-        
-        return count;
+            if (stage is Expand) size = size * 2 - 1;
+        }
+
+        return size;
     }
     
     public void OnValidate()

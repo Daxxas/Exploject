@@ -30,7 +30,21 @@ public class Biome : ScriptableObject, ISerializationCallbackReceiver
     
     [SerializeField, HideInInspector]
     public string methodEquation;
-    public MethodInfo TerrainEquation => Type.GetType(typeEquation)?.GetMethod(methodEquation);
+
+    private FunctionPointer<TerrainEquation.TerrainEquationDelegate> cachedCompiledEquation;
+    
+    public FunctionPointer<TerrainEquation.TerrainEquationDelegate> TerrainEquation()
+    {
+        if (!cachedCompiledEquation.IsCreated)
+        {
+            MethodInfo method = Type.GetType(typeEquation)?.GetMethod(methodEquation);
+            TerrainEquation.TerrainEquationDelegate equation = (TerrainEquation.TerrainEquationDelegate) Delegate.CreateDelegate(typeof(TerrainEquation.TerrainEquationDelegate), method);
+     
+            cachedCompiledEquation = BurstCompiler.CompileFunctionPointer<TerrainEquation.TerrainEquationDelegate>(equation);
+        }
+
+        return cachedCompiledEquation;
+    } 
     
     public BiomeHolder BuildBiome()
     {

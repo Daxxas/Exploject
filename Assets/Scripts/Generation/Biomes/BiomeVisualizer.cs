@@ -9,26 +9,49 @@ public class BiomeVisualizer : MonoBehaviour
 {
     [SerializeField] private BiomeGenerator biomeGenerator;
     [SerializeField] private int seed = 2;
-    [SerializeField] private int2 offset = int2.zero;
+    [SerializeField] private int chunksPreview = 3;
+    [SerializeField] private int2 testpos;
 
+    [ContextMenu("Test Biome At Pos")]
+    public void TestBiomeAtPos()
+    {
+        Debug.Log(biomeGenerator.Pipeline.GetChunkBiomeSize());
+        
+        var biome = biomeGenerator.GetBiomeAtPos(testpos);
+        Texture2D texture = (Texture2D) GetComponent<Renderer>().sharedMaterial.mainTexture;
+        texture.SetPixel(testpos.x, testpos.y, Color.magenta);
+        texture.Apply();
+        Debug.Log(biome);    
+    }
     
     [ContextMenu("Generate Texture")]
     public void GenerateRandomTexture()
     {
-        GenerationInfo.Seed = seed;
-        ChunkBiome chunkBiome = biomeGenerator.GetChunkBiome(offset, GenerationInfo.Seed);
-        Texture2D texture = new Texture2D(chunkBiome.width,chunkBiome.width);
-        texture.filterMode = FilterMode.Point;
+        biomeGenerator.ResetBiomeDictionnary();
         
-        for (int x = 0; x < chunkBiome.width; x++)
-        {
-            for (int z = 0; z < chunkBiome.width; z++)
-            {
-                Color pixelColor = chunkBiome[x, z].color;
+        GenerationInfo.Seed = seed;
+        int chunkBiomeSize = biomeGenerator.Pipeline.GetChunkBiomeSize();
+        int textureSize = chunksPreview * chunkBiomeSize;
+        Texture2D texture = new Texture2D(textureSize,textureSize);
+        texture.filterMode = FilterMode.Point;
 
-                texture.SetPixel(x,z, pixelColor);
+        for (int chunkX = 0; chunkX < chunksPreview; chunkX++)
+        {
+            for (int chunkZ = 0; chunkZ < chunksPreview; chunkZ++)
+            {
+                ChunkBiome chunkBiome = biomeGenerator.GetChunkBiome(new int2(chunkX, chunkZ), GenerationInfo.Seed);
+                
+                for (int x = 0; x < chunkBiome.width; x++)
+                {
+                    for (int z = 0; z < chunkBiome.width; z++)
+                    {
+                        Color pixelColor = chunkBiome[x, z].color;
+                        texture.SetPixel(x + (chunkX * chunkBiomeSize),z + (chunkZ * chunkBiomeSize), pixelColor);
+                    }
+                }
             }
         }
+        
     
         texture.Apply();
     

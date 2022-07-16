@@ -13,7 +13,6 @@ MonoBehaviour:
   m_Name: River Stage
   m_EditorClassIdentifier: 
   noise:
-    mSeed: 4257
     mFrequency: 0.02
     mNoiseType: 1
     mRotationType3D: 0
@@ -24,7 +23,7 @@ MonoBehaviour:
     mGain: 1
     mWeightedStrength: 0
     mPingPongStength: 0
-    mFractalBounding: 0
+    mFractalBounding: 1
     mCellularDistanceFunction: 0
     mCellularReturnType: 0
     mCellularJitterModifier: 0
