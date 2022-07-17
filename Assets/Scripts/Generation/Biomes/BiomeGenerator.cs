@@ -13,20 +13,14 @@ public class BiomeGenerator : MonoBehaviour
     public static BiomeGenerator Instance => instance;
 
     [SerializeField] private BiomePipeline pipeline;
-    [SerializeField] private Biome biome;
+    [SerializeField] private Biome oceanBiome;
+    [SerializeField] private Biome plainBiome;
     public BiomePipeline Pipeline => pipeline;
 
-    private Dictionary<int2, ChunkBiome> biomeChunkDic = new Dictionary<int2, ChunkBiome>();
-
-    
-    private int chunkBiomeSize;
-    
     private void Awake()
     {
         instance = this;
         DontDestroyOnLoad(this);
-
-        chunkBiomeSize = pipeline.GetChunkBiomeSize();
     }
 
     public NativeArray<FunctionPointer<TerrainEquation.TerrainEquationDelegate>> GetBiomesForTerrainChunk(Vector2 coord)
@@ -45,78 +39,18 @@ public class BiomeGenerator : MonoBehaviour
         
         return returnBiomes;
     }
-
-    public ChunkBiome GetChunkBiome(int2 origin, int seed)
-    {
-        // TODO : Threadify this
-
-        if (biomeChunkDic.ContainsKey(origin))
-        {
-            return biomeChunkDic[origin];
-        }
-        else
-        {
-            ChunkBiome chunkBiome = InitChunk(origin * (pipeline.initialSize + 3), seed);
-
-            foreach (var stage in pipeline.stages)
-            {
-                chunkBiome = stage.Apply(chunkBiome, seed);
-            }
-
-            biomeChunkDic[origin] = chunkBiome;
-            
-            return biomeChunkDic[origin];
-        }
-    }
-
-    public void ResetBiomeDictionnary()
-    {
-        biomeChunkDic.Clear();
-    }
     
     public Biome GetBiomeAtPos(int2 pos)
     {
-        int2 adaptedPos = pos;
+        int continentalnessIndex = MathUtil.NormalizeIndex(pipeline.SourceNoise.continentalness.GetNoise(GenerationInfo.seed, pos.x, pos.y), 2);
         
-        if (adaptedPos.x < 0)
+        if (continentalnessIndex == 0)
         {
-            adaptedPos.x += -chunkBiomeSize;
+            return oceanBiome;
         }
-        if (adaptedPos.y < 0)
+        else
         {
-            adaptedPos.y += -chunkBiomeSize;
+            return plainBiome;
         }
-        
-        int2 correspondingBiomeChunk = new int2(adaptedPos.x / chunkBiomeSize, adaptedPos.y / chunkBiomeSize);
-
-        ChunkBiome chunkBiome = GetChunkBiome(correspondingBiomeChunk, GenerationInfo.Seed);
-
-        // Debug.Log($"input : {pos} | getting position for chunk {correspondingBiomeChunk} at {pos.x % chunkBiomeSize} {pos.y % chunkBiomeSize}");
-        
-        Biome biome = chunkBiome[math.abs(pos.x) % chunkBiomeSize, math.abs(pos.y) % chunkBiomeSize];
-        
-        return biome;
-    }
-    
-    private ChunkBiome InitChunk(int2 origin, int seed)
-    {
-        ChunkBiome chunkBiome = new ChunkBiome(pipeline.initialSize, origin);
-
-        for (int x = 0; x < chunkBiome.width; x++)
-        {
-            for (int z = 0; z < chunkBiome.width; z++)
-            {
-                chunkBiome[x, z] = pipeline.initialBiomes.GetRandomBiome(pipeline.sourceInitialBiomes, seed, x+origin.x, z+origin.y);
-            }
-        }
-
-        return chunkBiome;
-    }
-
-    public static void InitNewChunk(ChunkBiome chunkBiome, BiomePipeline pipeline, int2 origin)
-    {
-        chunkBiome.origin = origin;
-        chunkBiome.width = pipeline.initialSize;
-        chunkBiome.data = new Biome[pipeline.initialSize, pipeline.initialSize];
     }
 }

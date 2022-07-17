@@ -254,8 +254,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   biomeGenerator: {fileID: 75598017}
-  seed: 1401
-  chunksPreview: 10
+  seed: 1468
+  previewSize: 256
   testpos:
     x: 113
     y: 0
@@ -272,7 +272,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   pipeline: {fileID: 11400000, guid: 832ee44be44e40b418f022e31e722e8f, type: 2}
-  biome: {fileID: 11400000, guid: 5105e0f57fbd95747850c4e18a275b0e, type: 2}
+  oceanBiome: {fileID: 11400000, guid: 5105e0f57fbd95747850c4e18a275b0e, type: 2}
+  plainBiome: {fileID: 11400000, guid: 50e5372f0736dc74a846576a48805391, type: 2}
 --- !u!64 &75598018
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -735,6 +736,50 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   debugBiome: {fileID: 11400000, guid: 50e5372f0736dc74a846576a48805391, type: 2}
+  sourceNoise: {fileID: 11400000, guid: f95d40b1b512fa1479d96e74feb94b3d, type: 2}
+  continentCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: -1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 136
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.35769334
+      value: 70.8636
+      inSlope: 126.40319
+      outSlope: 126.40319
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.4549687
+      value: 115.0099
+      inSlope: -2.10671
+      outSlope: -2.10671
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.08869915
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.99609375
+      value: 117.38614
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 136
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  curveSampleCount: 512
   resolution: 2
 --- !u!4 &2127954276
 Transform:
@@ -763,7 +808,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: adcf1a52731d4139bb01829ba7360aa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  chunkViewDistance: 16
+  chunkViewDistance: 8
   farChunkViewDistance: 24
   maxChunksPerFrame: 2
   viewer: {fileID: 433478268}

@@ -2,21 +2,14 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!21 &2100000
 Material:
-  serializedVersion: 8
+  serializedVersion: 6
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: URPBFGrass04
   m_Shader: {fileID: 4800000, guid: 2c2cefb6802b6cd429dfbe4041764676, type: 3}
-  m_ValidKeywords:
-  - USE_CS
-  - USE_RT
-  - USE_S
-  - USE_SC
-  - USE_WC
-  m_InvalidKeywords:
-  - _RTEFFECT_ON
+  m_ShaderKeywords: USE_CS USE_RT USE_S USE_SC _RTEFFECT_ON
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -86,7 +79,6 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    m_Ints: []
     m_Floats:
     - _BumpScale: 1
     - _Cutoff: 0.5
@@ -132,13 +124,14 @@ Material:
     - _UseAmbientLight: 0
     - _UseCS: 1
     - _UsePR: 0
+    - _UsePreciseDepth: 0
     - _UseRT: 1
     - _UseShadow: 1
     - _UseShadowCast: 1
     - _UseSuperStack: 0
     - _UseTP: 0
     - _UseVR: 0
-    - _UseWC: 1
+    - _UseWC: 0
     - _WindForce: 0
     - _WindMovement: 1
     - _WorldRotation: 0
@@ -154,4 +147,3 @@ Material:
     - _ProjectedShadowColor: {r: 0.3820224, g: 0.4509804, b: 0.04313725, a: 1}
     - _RimColor: {r: 0.16614768, g: 0.17, b: 0.09758, a: 1}
     - _SelfShadowColor: {r: 0.37896207, g: 0.426, b: 0.377862, a: 1}
-  m_BuildTextureStacks: []

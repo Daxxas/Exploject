@@ -135,6 +135,7 @@ Material:
     - _UseAmbientLight: 0
     - _UseCS: 1
     - _UsePR: 0
+    - _UsePreciseDepth: 0
     - _UseRT: 1
     - _UseShadow: 1
     - _UseShadowCast: 1

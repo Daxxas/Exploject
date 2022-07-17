@@ -1,5 +1,4 @@
 using System;
-using System.Runtime.InteropServices;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
@@ -14,8 +13,13 @@ public class MapDataGenerator : MonoBehaviour
     private static MapDataGenerator instance;
     public static MapDataGenerator Instance => instance;
 
+    [SerializeField] private SourceNoise sourceNoise;    
+    [HideInInspector] public AnimationCurve continentCurve;
+    private SampledNoiseCurve sampledContinentCurve;
+    
+    [SerializeField] private int curveSampleCount = 512;
     [SerializeField] private const int chunkSize = 16;
-    [SerializeField] public const int chunkHeight = 128;
+    [SerializeField] public const int chunkHeight = 120;
     [SerializeField] public const float threshold = 0;
     [SerializeField] public int resolution = 2;
     public static int ChunkSize => chunkSize;
@@ -45,8 +49,14 @@ public class MapDataGenerator : MonoBehaviour
             instance = this;
             DontDestroyOnLoad(this);
         }
+
+        sampledContinentCurve = new SampledNoiseCurve(continentCurve, curveSampleCount);
     }
 
+    private void OnDestroy()
+    {
+        sampledContinentCurve.Dispose();
+    }
 
     // First job to be called from CreateChunk to generate MapData 
     [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)] 
@@ -60,11 +70,16 @@ public class MapDataGenerator : MonoBehaviour
         public int resolution;
         // Output data
         public NativeArray<float> generatedMap;
-
-        // Function reference
-        [ReadOnly]
-        public NativeArray<FunctionPointer<TerrainEquation.TerrainEquationDelegate>> functionPointers;
         
+        [ReadOnly]
+        public SampledNoiseCurve continentCurve;
+        [ReadOnly]
+        public FastNoiseLite continentalness;
+        
+        // Function reference
+        // [ReadOnly]
+        // public NativeArray<FunctionPointer<TerrainEquation.TerrainEquationDelegate>> functionPointers;
+
         public int supportedChunkSize => ChunkSize + resolution * 3;
         
         public void Execute(int idx)
@@ -78,11 +93,12 @@ public class MapDataGenerator : MonoBehaviour
             if (x % resolution == 0 && y % resolution == 0 && z % resolution == 0)
             {
                 // Since it's a IJobParallelFor, job is called for every idx, filling the generatedMap in parallel
-                generatedMap[idx] = functionPointers[biomeIdx].Invoke(seed, x + (offsetx), y, z + (offsetz));
-            }
+                // generatedMap[idx] = functionPointers[biomeIdx].Invoke(seed, x + (offsetx), y, z + (offsetz));
+                generatedMap[idx] = continentCurve.EvaluateLerp(continentalness.GetNoise(seed, x + (offsetx), z + (offsetz))) - y;
+            }   
             else
             {
-                generatedMap[idx] = math.NAN;
+                generatedMap[idx] = math.NAN; 
             }
         }
     }
@@ -96,8 +112,8 @@ public class MapDataGenerator : MonoBehaviour
             offsetx = offset.x-resolution,
             offsetz = offset.y-resolution,
             seed = GenerationInfo.seed,
-            // Biome information
-            functionPointers = biomeFunctionPointers,
+            continentCurve = sampledContinentCurve,
+            continentalness = sourceNoise.continentalness,
             resolution = resolution,
             // Output data
             generatedMap = generatedMap

@@ -9,14 +9,12 @@ public class BiomeVisualizer : MonoBehaviour
 {
     [SerializeField] private BiomeGenerator biomeGenerator;
     [SerializeField] private int seed = 2;
-    [SerializeField] private int chunksPreview = 3;
+    [SerializeField] private int previewSize = 3;
     [SerializeField] private int2 testpos;
 
     [ContextMenu("Test Biome At Pos")]
     public void TestBiomeAtPos()
     {
-        Debug.Log(biomeGenerator.Pipeline.GetChunkBiomeSize());
-        
         var biome = biomeGenerator.GetBiomeAtPos(testpos);
         Texture2D texture = (Texture2D) GetComponent<Renderer>().sharedMaterial.mainTexture;
         texture.SetPixel(testpos.x, testpos.y, Color.magenta);
@@ -27,28 +25,17 @@ public class BiomeVisualizer : MonoBehaviour
     [ContextMenu("Generate Texture")]
     public void GenerateRandomTexture()
     {
-        biomeGenerator.ResetBiomeDictionnary();
-        
         GenerationInfo.Seed = seed;
-        int chunkBiomeSize = biomeGenerator.Pipeline.GetChunkBiomeSize();
-        int textureSize = chunksPreview * chunkBiomeSize;
+        int textureSize = previewSize;
         Texture2D texture = new Texture2D(textureSize,textureSize);
         texture.filterMode = FilterMode.Point;
 
-        for (int chunkX = 0; chunkX < chunksPreview; chunkX++)
+        for (int x = 0; x < previewSize; x++)
         {
-            for (int chunkZ = 0; chunkZ < chunksPreview; chunkZ++)
+            for (int z = 0; z < previewSize; z++)
             {
-                ChunkBiome chunkBiome = biomeGenerator.GetChunkBiome(new int2(chunkX, chunkZ), GenerationInfo.Seed);
-                
-                for (int x = 0; x < chunkBiome.width; x++)
-                {
-                    for (int z = 0; z < chunkBiome.width; z++)
-                    {
-                        Color pixelColor = chunkBiome[x, z].color;
-                        texture.SetPixel(x + (chunkX * chunkBiomeSize),z + (chunkZ * chunkBiomeSize), pixelColor);
-                    }
-                }
+                Color pixelColor = biomeGenerator.GetBiomeAtPos(new int2(x, z)).color;
+                texture.SetPixel(x,z, pixelColor);
             }
         }
         

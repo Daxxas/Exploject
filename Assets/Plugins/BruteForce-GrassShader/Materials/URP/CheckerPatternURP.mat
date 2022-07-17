@@ -14,6 +14,7 @@ Material:
   - USE_RT
   - USE_S
   - USE_SC
+  - USE_TP
   m_InvalidKeywords:
   - _RTEFFECT_ON
   m_LightmapFlags: 4
@@ -131,11 +132,12 @@ Material:
     - _UseAmbientLight: 0
     - _UseCS: 1
     - _UsePR: 0
+    - _UsePreciseDepth: 0
     - _UseRT: 1
     - _UseShadow: 1
     - _UseShadowCast: 1
     - _UseSuperStack: 0
-    - _UseTP: 0
+    - _UseTP: 1
     - _UseVR: 0
     - _UseWC: 0
     - _WindForce: 0
