@@ -42,15 +42,17 @@ public class BiomeGenerator : MonoBehaviour
     
     public Biome GetBiomeAtPos(int2 pos)
     {
-        int continentalnessIndex = MathUtil.NormalizeIndex(pipeline.SourceNoise.continentalness.GetNoise(GenerationInfo.seed, pos.x, pos.y), 2);
+        // int continentalnessIndex = MathUtil.NormalizeIndex(pipeline.GenerationConfiguration.yContinentalness.GetNoise(GenerationInfo.seed, pos.x, pos.y), 2);
+        //
+        // if (continentalnessIndex == 0)
+        // {
+        //     return oceanBiome;
+        // }
+        // else
+        // {
+        //     return plainBiome;
+        // }
         
-        if (continentalnessIndex == 0)
-        {
-            return oceanBiome;
-        }
-        else
-        {
-            return plainBiome;
-        }
+        return plainBiome;
     }
 }

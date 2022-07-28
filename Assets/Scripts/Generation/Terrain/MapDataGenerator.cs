@@ -13,13 +13,12 @@ public class MapDataGenerator : MonoBehaviour
     private static MapDataGenerator instance;
     public static MapDataGenerator Instance => instance;
 
-    [SerializeField] private SourceNoise sourceNoise;    
-    [HideInInspector] public AnimationCurve continentCurve;
-    private SampledNoiseCurve sampledContinentCurve;
-    
+    [SerializeField] private GenerationConfiguration generationConfiguration;
+    public GenerationConfiguration GenerationConfiguration => generationConfiguration;
+
     [SerializeField] private int curveSampleCount = 512;
     [SerializeField] private const int chunkSize = 16;
-    [SerializeField] public const int chunkHeight = 120;
+    [SerializeField] public const int chunkHeight = 230;
     [SerializeField] public const float threshold = 0;
     [SerializeField] public int resolution = 2;
     public static int ChunkSize => chunkSize;
@@ -50,14 +49,41 @@ public class MapDataGenerator : MonoBehaviour
             DontDestroyOnLoad(this);
         }
 
-        sampledContinentCurve = new SampledNoiseCurve(continentCurve, curveSampleCount);
+        generationConfiguration.sampledsquashContinentCurve = new SampledNoiseCurve(generationConfiguration.squashContinentCurve, curveSampleCount);
+        generationConfiguration.sampledyContinentCurve = new SampledNoiseCurve(generationConfiguration.yContinentCurve, curveSampleCount);
     }
 
     private void OnDestroy()
     {
-        sampledContinentCurve.Dispose();
+        generationConfiguration.sampledsquashContinentCurve.Dispose();
+        generationConfiguration.sampledyContinentCurve.Dispose();
     }
 
+    public JobHandle GenerateMapData(Vector2 offset, NativeArray<FunctionPointer<TerrainEquation.TerrainEquationDelegate>> biomeFunctionPointers, NativeArray<float> generatedMap)
+    {
+        // Job to generate input map data for marching cube
+        var mapDataJob = new MapDataJob()
+        {
+            // Inputs
+            offsetx = offset.x-resolution,
+            offsetz = offset.y-resolution,
+            seed = GenerationInfo.seed,
+            squashContinentCurve = generationConfiguration.sampledsquashContinentCurve,
+            squashContinentalness = generationConfiguration.squashContinentalness,
+            yContinentalness = generationConfiguration.yContinentalness,
+            yContinentCurve = generationConfiguration.sampledyContinentCurve,
+            resolution = resolution,
+            // Output data
+            generatedMap = generatedMap
+        };
+        
+        JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 100);
+
+        biomeFunctionPointers.Dispose(mapDataHandle);
+        
+        return mapDataHandle;
+    }
+    
     // First job to be called from CreateChunk to generate MapData 
     [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)] 
     public struct MapDataJob : IJobParallelFor
@@ -72,9 +98,15 @@ public class MapDataGenerator : MonoBehaviour
         public NativeArray<float> generatedMap;
         
         [ReadOnly]
-        public SampledNoiseCurve continentCurve;
+        public SampledNoiseCurve yContinentCurve;
         [ReadOnly]
-        public FastNoiseLite continentalness;
+        public FastNoiseLite yContinentalness;
+        
+        
+        [ReadOnly]
+        public SampledNoiseCurve squashContinentCurve;
+        [ReadOnly]
+        public FastNoiseLite squashContinentalness;
         
         // Function reference
         // [ReadOnly]
@@ -94,36 +126,16 @@ public class MapDataGenerator : MonoBehaviour
             {
                 // Since it's a IJobParallelFor, job is called for every idx, filling the generatedMap in parallel
                 // generatedMap[idx] = functionPointers[biomeIdx].Invoke(seed, x + (offsetx), y, z + (offsetz));
-                generatedMap[idx] = continentCurve.EvaluateLerp(continentalness.GetNoise(seed, x + (offsetx), z + (offsetz))) - y;
+                float yContinent = yContinentCurve.EvaluateLerp(yContinentalness.GetNoise(seed, x + (offsetx), z + (offsetz)));
+                float squashContinent = squashContinentCurve.EvaluateLerp(yContinentalness.GetNoise(seed, x + (offsetx), z + (offsetz)));
+
+                generatedMap[idx] = (-(y - yContinent) / squashContinent) + 1 + squashContinentalness.GetNoise(seed, x + (offsetx), y, z + (offsetz)); 
             }   
             else
             {
-                generatedMap[idx] = math.NAN; 
+                generatedMap[idx] = math.NAN;
             }
         }
-    }
-    
-    public JobHandle GenerateMapData(Vector2 offset, NativeArray<FunctionPointer<TerrainEquation.TerrainEquationDelegate>> biomeFunctionPointers, NativeArray<float> generatedMap)
-    {
-        // Job to generate input map data for marching cube
-        var mapDataJob = new MapDataJob()
-        {
-            // Inputs
-            offsetx = offset.x-resolution,
-            offsetz = offset.y-resolution,
-            seed = GenerationInfo.seed,
-            continentCurve = sampledContinentCurve,
-            continentalness = sourceNoise.continentalness,
-            resolution = resolution,
-            // Output data
-            generatedMap = generatedMap
-        };
-        
-        JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 100);
-
-        biomeFunctionPointers.Dispose(mapDataHandle);
-        
-        return mapDataHandle;
     }
 }
 

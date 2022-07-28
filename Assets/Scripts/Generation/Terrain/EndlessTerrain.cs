@@ -20,7 +20,7 @@ public class EndlessTerrain : MonoBehaviour
     public int UnitViewDistance => chunkViewDistance * MapDataGenerator.ChunkSize;
     public int FarChunkViewDistance => ChunkViewDistance + farChunkViewDistance;
     public int UnitFarChunkViewDistance => FarChunkViewDistance * MapDataGenerator.ChunkSize;
-
+    
     [SerializeField] private int farChunkViewDistance = 100;
     [SerializeField] private int maxChunksPerFrame = 5;
     
@@ -38,8 +38,6 @@ public class EndlessTerrain : MonoBehaviour
     
     private Vector2 viewerChunkPos;
     public Vector2 ViewerChunkPos => viewerChunkPos;
-
-    private int unitFarViewDistance => farChunkViewDistance * MapDataGenerator.ChunkSize;
     
     public static NativeArray<int> cornerIndexAFromEdge;
     public static NativeArray<int> cornerIndexBFromEdge;

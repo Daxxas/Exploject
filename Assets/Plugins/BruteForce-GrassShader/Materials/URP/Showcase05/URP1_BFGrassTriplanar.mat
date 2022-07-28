@@ -13,8 +13,8 @@ Material:
   - USE_AL
   - USE_CS
   - USE_PR
-  - USE_RT
   - USE_S
+  - USE_SC
   - USE_SS
   - USE_WC
   m_InvalidKeywords: []
@@ -140,9 +140,9 @@ Material:
     - _UseCS: 1
     - _UsePR: 1
     - _UsePreciseDepth: 0
-    - _UseRT: 1
+    - _UseRT: 0
     - _UseShadow: 1
-    - _UseShadowCast: 0
+    - _UseShadowCast: 1
     - _UseSuperStack: 1
     - _UseTP: 0
     - _UseVR: 0

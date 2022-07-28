@@ -8,8 +8,8 @@ using UnityEngine;
 public class BiomePipeline : ScriptableObject
 {
     [SerializeField] private AnimationCurve continentalnessCurve = new AnimationCurve(new []{new Keyframe(-1, 0), new Keyframe(1, 100)});
-    [SerializeField] private SourceNoise sourceNoise;
-    public SourceNoise SourceNoise => sourceNoise;
+    [SerializeField] private GenerationConfiguration generationConfiguration;
+    public GenerationConfiguration GenerationConfiguration => generationConfiguration;
     public List<Stage> stages;
 }
 
