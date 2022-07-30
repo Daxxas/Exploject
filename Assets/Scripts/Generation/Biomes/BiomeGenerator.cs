@@ -17,42 +17,76 @@ public class BiomeGenerator : MonoBehaviour
     [SerializeField] private Biome plainBiome;
     public BiomePipeline Pipeline => pipeline;
 
+    private Dictionary<FixedString32Bytes, Biome> biomeDictionary = new Dictionary<FixedString32Bytes, Biome>();
+
     private void Awake()
     {
         instance = this;
         DontDestroyOnLoad(this);
+
+        foreach (var biome in pipeline.biomes)
+        {
+            biomeDictionary.Add(biome.GetBiomeHolder().id, biome);
+        }
     }
 
-    public NativeArray<FunctionPointer<TerrainEquation.TerrainEquationDelegate>> GetBiomesForTerrainChunk(Vector2 coord)
+    public NativeArray<BiomeHolder> GetBiomesForTerrainChunk(Vector2 coord)
     {
-        NativeArray<FunctionPointer<TerrainEquation.TerrainEquationDelegate>> returnBiomes = new NativeArray<FunctionPointer<TerrainEquation.TerrainEquationDelegate>>(MapDataGenerator.Instance.supportedChunkSize * MapDataGenerator.Instance.supportedChunkSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        NativeArray<BiomeHolder> returnBiomes = new NativeArray<BiomeHolder>(MapDataGenerator.Instance.supportedChunkSize * MapDataGenerator.Instance.supportedChunkSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
 
         for (int x = 0; x < MapDataGenerator.Instance.supportedChunkSize; x++)
         {
             for (int z = 0; z < MapDataGenerator.Instance.supportedChunkSize; z++)
             {
-                int biomeIdx = (int) (MapDataGenerator.Instance.supportedChunkSize * x + z);
+                int biomeIdx = x + MapDataGenerator.Instance.supportedChunkSize * z;
+
+                int2 pos = new int2((int)(x + coord.x * MapDataGenerator.Instance.supportedChunkSize), (int)(z + coord.y * MapDataGenerator.Instance.supportedChunkSize));
                 
-                returnBiomes[biomeIdx] = GetBiomeAtPos(new int2((int)(x + coord.x * MapDataGenerator.Instance.supportedChunkSize), (int)(z + coord.y * MapDataGenerator.Instance.supportedChunkSize))).TerrainEquation();
-            }            
+                returnBiomes[biomeIdx] = GetBiomeAtPos(pos).GetBiomeHolder();
+            }
         }
         
         return returnBiomes;
     }
+
+    public NativeList<BiomeHolder> GetBiomesInChunk(Vector2 coord)
+    {
+        NativeList<BiomeHolder> returnBiomes = new NativeList<BiomeHolder>(Allocator.Persistent);
+
+        for (int x = 0; x < MapDataGenerator.Instance.supportedChunkSize; x++)
+        {
+            for (int z = 0; z < MapDataGenerator.Instance.supportedChunkSize; z++)
+            {
+                int2 pos = new int2((int)(x + coord.x * MapDataGenerator.Instance.supportedChunkSize), (int)(z + coord.y * MapDataGenerator.Instance.supportedChunkSize));
+
+                BiomeHolder biomeAtPos = GetBiomeAtPos(pos).GetBiomeHolder();
+                
+                if (!returnBiomes.Contains(biomeAtPos))
+                {
+                    returnBiomes.Add(biomeAtPos);
+                }
+            }
+        }
+        
+        return returnBiomes;
+    }
+
+    public Biome GetBiomeFromId(FixedString32Bytes id)
+    {
+        return biomeDictionary[id];
+    }
     
     public Biome GetBiomeAtPos(int2 pos)
     {
-        // int continentalnessIndex = MathUtil.NormalizeIndex(pipeline.GenerationConfiguration.yContinentalness.GetNoise(GenerationInfo.seed, pos.x, pos.y), 2);
-        //
-        // if (continentalnessIndex == 0)
-        // {
-        //     return oceanBiome;
-        // }
-        // else
-        // {
-        //     return plainBiome;
-        // }
+        int continentalnessIndex = MathUtil.NormalizeIndex(pipeline.GenerationConfiguration.yContinentalness.GetNoise(GenerationInfo.seed, pos.x, pos.y), 2);
         
-        return plainBiome;
+        if (continentalnessIndex == 0)
+        {
+            return oceanBiome;
+        }
+        else
+        {
+            return plainBiome;
+        }
     }
 }

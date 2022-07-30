@@ -21,6 +21,8 @@ public struct MarchCubeJob : IJobParallelFor
         public NativeArray<int> cornerIndexAFromEdge;
         [ReadOnly]
         public NativeArray<int> cornerIndexBFromEdge;
+        [ReadOnly]
+        public NativeArray<BiomeHolder> biomesForTerrainChunk;
         
         // Output
         [WriteOnly]
@@ -144,6 +146,7 @@ public struct MarchCubeJob : IJobParallelFor
                     bool isBorderInexB = marchCube[indexB].p.x < resolution || marchCube[indexB].p.z < resolution ||
                                       marchCube[indexB].p.x > MapDataGenerator.ChunkSize+(resolution) || marchCube[indexB].p.z > MapDataGenerator.ChunkSize+(resolution);
                     triangle.SetEdgeBorder(j, isBorderIndexA || isBorderInexB);
+                    triangle.biome = biomesForTerrainChunk[to1D(x, z)];
                 }
                 
                 // Triangles are stored in a queue because we don't know how many triangles we will get & we can write in parallel easily in a queue
@@ -182,6 +185,11 @@ public struct MarchCubeJob : IJobParallelFor
         public int to1D( int x, int y, int z)
         {
             return x + y*supportedChunkSize + z*supportedChunkSize*MapDataGenerator.chunkHeight;
+        }
+        
+        public int to1D( int x, int z)
+        {
+            return x + supportedChunkSize * z;
         }
         
         public struct CubePoint

@@ -1,9 +1,11 @@
 using System;
 using System.Collections;
+using System.Linq;
 using System.Numerics;
 using TMPro;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
@@ -60,11 +62,13 @@ public class TerrainChunk : MonoBehaviour
         // Variables that will be filled & passed along jobs
         NativeArray<float> generatedMap = new NativeArray<float>(MapDataGenerator.chunkHeight * supportedChunkSize * supportedChunkSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         
-        NativeArray<FunctionPointer<TerrainEquation.TerrainEquationDelegate>> biomeFunctionPointers =  BiomeGenerator.Instance.GetBiomesForTerrainChunk(coord);
+        NativeArray<BiomeHolder> biomesForTerrainChunk =  BiomeGenerator.Instance.GetBiomesForTerrainChunk(coord);
 
-        var mapDataHandle = MapDataGenerator.Instance.GenerateMapData(position, biomeFunctionPointers, generatedMap);
+        NativeList<BiomeHolder> biomesInChunk = BiomeGenerator.Instance.GetBiomesInChunk(coord);
+        
+        var mapDataHandle = MapDataGenerator.Instance.GenerateMapData(position, generatedMap);
 
-        chunkMeshJob = GenerateChunkMesh(generatedMap, mapDataHandle);
+        chunkMeshJob = GenerateChunkMesh(generatedMap, biomesForTerrainChunk, biomesInChunk, mapDataHandle);
         
         return this;
     }
@@ -116,19 +120,23 @@ public class TerrainChunk : MonoBehaviour
     /// <param name="generatedMap">Data array for marching cube</param>
     /// <param name="mapDataHandle">Handle for the data job</param>
     /// <returns></returns>
-    public JobHandle GenerateChunkMesh(NativeArray<float> generatedMap, JobHandle mapDataHandle)
+    public JobHandle GenerateChunkMesh(NativeArray<float> generatedMap, NativeArray<BiomeHolder> biomesForTerrainChunk, NativeList<BiomeHolder> biomesInChunk, JobHandle mapDataHandle)
     {
         NativeQueue<Triangle> triangles = new NativeQueue<Triangle>(Allocator.TempJob);
         NativeParallelHashMap<Edge, float3> uniqueVertices = new NativeParallelHashMap<Edge, float3>((MapDataGenerator.chunkHeight * supportedChunkSize * supportedChunkSize), Allocator.Persistent);
 
-        NativeList<int> chunkTriangles = new NativeList<int>(Allocator.TempJob);
+        NativeParallelHashMap<BiomeHolder, UnsafeList<int>> chunkTriangles = new NativeParallelHashMap<BiomeHolder, UnsafeList<int>>(2,Allocator.TempJob);
+        foreach (var biomeTriangles in chunkTriangles)
+        {
+            biomeTriangles.Value = new UnsafeList<int>(MapDataGenerator.chunkHeight * supportedChunkSize * supportedChunkSize * 3, Allocator.TempJob);
+        }
+        
         NativeList<Vector3> chunkVertices = new NativeList<Vector3>(Allocator.TempJob);
         NativeList<Vector3> chunkNormals = new NativeList<Vector3>(Allocator.TempJob);
         
         Mesh mesh = new Mesh();
 
         mf.sharedMesh = mesh;
-        mr.material = meshMaterial;
 
         // Start marching cube based on a map data
         var marchJob = new MarchCubeJob()
@@ -136,6 +144,7 @@ public class TerrainChunk : MonoBehaviour
             // Input data
             map = generatedMap,
             resolution = resolution,
+            biomesForTerrainChunk = biomesForTerrainChunk,
             // March table 
             cornerIndexAFromEdge = EndlessTerrain.cornerIndexAFromEdge,
             cornerIndexBFromEdge = EndlessTerrain.cornerIndexBFromEdge,
@@ -152,6 +161,7 @@ public class TerrainChunk : MonoBehaviour
         {
             // Input
             triangles = triangles,
+            biomesInChunk = biomesInChunk,
             uniqueVertices = uniqueVertices,
             resolution = resolution,
             map = generatedMap,
@@ -162,11 +172,12 @@ public class TerrainChunk : MonoBehaviour
         };
 
         var chunkMeshHandle = chunkMeshJob.Schedule(marchHandle);
-        
-        
+
         triangles.Dispose(chunkMeshHandle);
         uniqueVertices.Dispose(chunkMeshHandle);
         generatedMap.Dispose(chunkMeshHandle);
+        biomesInChunk.Dispose(chunkMeshHandle);
+        biomesForTerrainChunk.Dispose(marchHandle);
 
         StartCoroutine(ApplyMeshData(mesh, chunkVertices, chunkNormals, chunkTriangles, chunkMeshHandle));
         
@@ -178,7 +189,7 @@ public class TerrainChunk : MonoBehaviour
     /// <summary>
     /// Apply mesh data from ChunkMeshJob on chunk mesh
     /// </summary>
-    private IEnumerator ApplyMeshData(Mesh mesh, NativeList<Vector3> verts, NativeList<Vector3> normals, NativeList<int> tris, JobHandle job)
+    private IEnumerator ApplyMeshData(Mesh mesh, NativeList<Vector3> verts, NativeList<Vector3> normals, NativeParallelHashMap<BiomeHolder, UnsafeList<int>> chunkTriangles, JobHandle job)
     {
         yield return new WaitUntil(() => job.IsCompleted);
         job.Complete();
@@ -187,18 +198,42 @@ public class TerrainChunk : MonoBehaviour
         {
             verts.Dispose();
             normals.Dispose();
-            tris.Dispose();
+            foreach (var biomeTriangles in chunkTriangles)
+            {
+                biomeTriangles.Value.Dispose();
+            }
+            chunkTriangles.Dispose();
             safeToRemove = true;
             DestroyChunk();
         }
         else
         {
+            mesh.subMeshCount = chunkTriangles.Count();
+            Material[] chunkMaterials = new Material[chunkTriangles.Count()];
+
+            int chunkMaterialsCount = 0;
+            foreach (var biome in chunkTriangles)
+            {
+                chunkMaterials[chunkMaterialsCount] = BiomeGenerator.Instance.GetBiomeFromId(biome.Key.id).biomeMaterial;
+                chunkMaterialsCount++;
+            }
+
+            mr.materials = chunkMaterials;
+            
             mesh.SetVertices(verts.ToArray());
             mesh.SetNormals(normals.ToArray());
-            mesh.SetTriangles(tris.ToArray(),0);
+
+            int biomeCount = 0;
+            foreach (var biomeTriangles in chunkTriangles)
+            {
+                NativeArray<int> biomeTrianglesArray = GetTrianglesFromUnsafeList(biomeTriangles.Value);
+                mesh.SetTriangles(biomeTrianglesArray.ToArray(), biomeCount);
+                biomeCount++;
+                biomeTrianglesArray.Dispose();
+            }
 
             mesh.bounds = new Bounds(new Vector3(((float) MapDataGenerator.ChunkSize) / 2, ((float) MapDataGenerator.chunkHeight)  / 2, ((float) MapDataGenerator.ChunkSize) / 2), 
-                new Vector3(MapDataGenerator.ChunkSize , MapDataGenerator.chunkHeight, MapDataGenerator.ChunkSize));
+                new Vector3(MapDataGenerator.ChunkSize, MapDataGenerator.chunkHeight, MapDataGenerator.ChunkSize));
 
             bounds = mr.bounds;
             
@@ -215,9 +250,29 @@ public class TerrainChunk : MonoBehaviour
 
             verts.Dispose(colliderJobHandle);
             normals.Dispose(colliderJobHandle);
-            tris.Dispose(colliderJobHandle);
+            
+            foreach (var biomeTriangles in chunkTriangles)
+            {
+                biomeTriangles.Value.Dispose(colliderJobHandle);
+            }
+            chunkTriangles.Dispose(colliderJobHandle);
             safeToRemove = true;
         }
+    }
+
+    private unsafe NativeArray<int> GetTrianglesFromUnsafeList(UnsafeList<int> inputList)
+    {
+        NativeArray<int> returnArray = NativeArrayUnsafeUtility.ConvertExistingDataToNativeArray<int>(inputList.Ptr, inputList.Length, Allocator.None);
+
+        AtomicSafetyHandle safety = AtomicSafetyHandle.Create();
+        
+        AtomicSafetyHandle.CheckWriteAndBumpSecondaryVersion(safety);
+        AtomicSafetyHandle.UseSecondaryVersion(ref safety);
+        AtomicSafetyHandle.SetAllowSecondaryVersionWriting(safety, false);
+        
+        NativeArrayUnsafeUtility.SetAtomicSafetyHandle(ref returnArray, safety);
+
+        return returnArray;
     }
 
     //////////////////////////////////////////////////////////////////

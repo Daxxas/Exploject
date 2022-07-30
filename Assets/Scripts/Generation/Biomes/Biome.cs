@@ -5,6 +5,7 @@ using System.Text;
 using Sirenix.OdinInspector;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -20,41 +21,18 @@ public class Biome : ScriptableObject, ISerializationCallbackReceiver
     
     [HideIf("isSelf")] 
     public Color color;
+
+    public Material biomeMaterial;
     
-    [HideIf("isSelf")] [SerializeField] 
-    private List<string> serializedTags = new List<string>();
+    [HideIf("isSelf")]
+    [SerializeField] private List<string> serializedTags = new List<string>();
     public HashSet<string> tags = new HashSet<string>();
 
-    [SerializeField, HideInInspector]
-    public string typeEquation;
     
-    [SerializeField, HideInInspector]
-    public string methodEquation;
-
-    private FunctionPointer<TerrainEquation.TerrainEquationDelegate> cachedCompiledEquation;
     
-    public FunctionPointer<TerrainEquation.TerrainEquationDelegate> TerrainEquation()
+    public BiomeHolder GetBiomeHolder()
     {
-        if (!cachedCompiledEquation.IsCreated)
-        {
-            MethodInfo method = Type.GetType(typeEquation)?.GetMethod(methodEquation);
-            TerrainEquation.TerrainEquationDelegate equation = (TerrainEquation.TerrainEquationDelegate) Delegate.CreateDelegate(typeof(TerrainEquation.TerrainEquationDelegate), method);
-     
-            cachedCompiledEquation = BurstCompiler.CompileFunctionPointer<TerrainEquation.TerrainEquationDelegate>(equation);
-        }
-
-        return cachedCompiledEquation;
-    } 
-    
-    public BiomeHolder BuildBiome()
-    {
-        NativeParallelHashSet<int> burstTags = new NativeParallelHashSet<int>(tags.Count, Allocator.Persistent);
-        foreach (string tag in tags)
-        {
-            burstTags.Add(Convert.ToInt32(Encoding.ASCII.GetBytes(tag)));
-        }
-        
-        return new BiomeHolder(Convert.ToInt32(Encoding.ASCII.GetBytes(id)), new float3(color.r, color.g, color.b), burstTags);
+        return new BiomeHolder( new FixedString32Bytes(id), new float3(color.r, color.g, color.b));;
     }
     
     public void OnBeforeSerialize()
@@ -84,16 +62,32 @@ public class Biome : ScriptableObject, ISerializationCallbackReceiver
     }
 }
 
-public struct BiomeHolder
+[BurstCompile(CompileSynchronously = true)]
+public struct BiomeHolder : IEquatable<BiomeHolder>
 {
-    public BiomeHolder(int id, float3 color, NativeParallelHashSet<int> tags)
+    public BiomeHolder(FixedString32Bytes id, float3 color) //, UnsafeParallelHashSet<int> tags)
     {
         this.id = id;
         this.color = color;
-        this.tags = tags;
+        // this.tags = tags;
+    }
+    
+    public FixedString32Bytes id;
+    public float3 color;
+    // public UnsafeParallelHashSet<int> tags;
+
+    public bool Equals(BiomeHolder other)
+    {
+        return id == other.id;
     }
 
-    public int id;
-    public float3 color;
-    public NativeParallelHashSet<int> tags;
+    public override bool Equals(object obj)
+    {
+        return obj is BiomeHolder other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        return id.GetHashCode();
+    }
 }

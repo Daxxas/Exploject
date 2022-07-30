@@ -45,11 +45,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  sourceNoise: {fileID: 11400000, guid: f95d40b1b512fa1479d96e74feb94b3d, type: 2}
-  stages:
-  - {fileID: 11400000, guid: a36e35319f79a644ea7207f743f4d81a, type: 2}
-  - {fileID: 11400000, guid: a6a265dadb57ef84998310ff04faf80b, type: 2}
-  - {fileID: 11400000, guid: d14f251c4242a7143a95123e5fe6eb4d, type: 2}
-  - {fileID: 11400000, guid: a6a265dadb57ef84998310ff04faf80b, type: 2}
-  - {fileID: 11400000, guid: a6a265dadb57ef84998310ff04faf80b, type: 2}
-  - {fileID: 11400000, guid: 33ba34cf660c4f045b1326fe5cb6b23f, type: 2}
+  generationConfiguration: {fileID: 11400000, guid: f95d40b1b512fa1479d96e74feb94b3d, type: 2}
+  biomes:
+  - {fileID: 11400000, guid: 50e5372f0736dc74a846576a48805391, type: 2}
+  - {fileID: 11400000, guid: 5105e0f57fbd95747850c4e18a275b0e, type: 2}

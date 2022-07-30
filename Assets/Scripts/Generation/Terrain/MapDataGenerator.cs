@@ -1,6 +1,7 @@
 using System;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
@@ -59,7 +60,7 @@ public class MapDataGenerator : MonoBehaviour
         generationConfiguration.sampledyContinentCurve.Dispose();
     }
 
-    public JobHandle GenerateMapData(Vector2 offset, NativeArray<FunctionPointer<TerrainEquation.TerrainEquationDelegate>> biomeFunctionPointers, NativeArray<float> generatedMap)
+    public JobHandle GenerateMapData(Vector2 offset, NativeArray<float> generatedMap)
     {
         // Job to generate input map data for marching cube
         var mapDataJob = new MapDataJob()
@@ -78,8 +79,6 @@ public class MapDataGenerator : MonoBehaviour
         };
         
         JobHandle mapDataHandle = mapDataJob.Schedule(generatedMap.Length, 100);
-
-        biomeFunctionPointers.Dispose(mapDataHandle);
         
         return mapDataHandle;
     }
@@ -120,8 +119,6 @@ public class MapDataGenerator : MonoBehaviour
             int y = (idx / supportedChunkSize) % chunkHeight;
             int z = idx / (supportedChunkSize * chunkHeight);
 
-            int biomeIdx = supportedChunkSize * x + z;
-            
             if (x % resolution == 0 && y % resolution == 0 && z % resolution == 0)
             {
                 // Since it's a IJobParallelFor, job is called for every idx, filling the generatedMap in parallel
@@ -130,12 +127,29 @@ public class MapDataGenerator : MonoBehaviour
                 float squashContinent = squashContinentCurve.EvaluateLerp(yContinentalness.GetNoise(seed, x + (offsetx), z + (offsetz)));
 
                 generatedMap[idx] = (-(y - yContinent) / squashContinent) + 1 + squashContinentalness.GetNoise(seed, x + (offsetx), y, z + (offsetz)); 
-            }   
+            }
             else
             {
                 generatedMap[idx] = math.NAN;
             }
         }
+    }
+
+    [ContextMenu("UnsafeTest")]
+    private unsafe void UnsafeTest()
+    {
+        NativeArray<UnsafeList<int>> testArray = new NativeArray<UnsafeList<int>>(3, Allocator.Persistent);
+        testArray[0] = new UnsafeList<int>(3, Allocator.Persistent);
+        
+        var list = testArray[0];
+        list.Add(4);
+        list.Add(5);
+        list.Add(6);
+        testArray[0] = list;
+
+        Debug.Log(testArray[0].Length);
+
+        testArray.Dispose();
     }
 }
 

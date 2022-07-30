@@ -15,8 +15,7 @@ MonoBehaviour:
   isSelf: 0
   id: PLAIN
   color: {r: 0.078431375, g: 0.9607844, b: 0.16470589, a: 1}
+  biomeMaterial: {fileID: 2100000, guid: 8ec157d12f52345409ad7dee286b967a, type: 2}
   serializedTags:
   - PLAIN
   - LAND
-  typeEquation: VanillaEquation
-  methodEquation: GetResult

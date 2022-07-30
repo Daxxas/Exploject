@@ -15,8 +15,7 @@ MonoBehaviour:
   isSelf: 0
   id: OCEAN
   color: {r: 0, g: 0.15949917, b: 1, a: 1}
+  biomeMaterial: {fileID: 2100000, guid: 6b6c24c7b24a89148b959ad166a667e3, type: 2}
   serializedTags:
   - OCEAN
   - WATER
-  typeEquation: OceanEquation
-  methodEquation: GetResult

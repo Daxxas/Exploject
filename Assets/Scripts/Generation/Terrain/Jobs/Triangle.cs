@@ -11,6 +11,8 @@ public struct Triangle
     public bool isBorderB;
     public bool isBorderC;
 
+    public BiomeHolder biome;
+
     public bool isBorderTriangle => isBorderA || isBorderB || isBorderC; 
     
     public Edge this [int i] {
@@ -87,7 +89,7 @@ public struct Triangle
         }
     }
 
-    public Triangle(Edge a, Edge b, Edge c, bool isBorderA, bool isBorderB, bool isBorderC)
+    public Triangle(Edge a, Edge b, Edge c, bool isBorderA, bool isBorderB, bool isBorderC, BiomeHolder biome)
     {
         this.vertexIndexA = a;
         this.vertexIndexB = b;
@@ -96,5 +98,7 @@ public struct Triangle
         this.isBorderA = isBorderA;
         this.isBorderB = isBorderB;
         this.isBorderC = isBorderC;
+
+        this.biome = biome;
     }
 }
