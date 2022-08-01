@@ -9,6 +9,7 @@ Shader "BruteForce/InteractiveGrassTerrain"
 		// Terrain properties //
 		[HideInInspector] _Control0("Control0 (RGBA)", 2D) = "white" {}
 		[HideInInspector] _Control1("Control1 (RGBA)", 2D) = "white" {}
+		[HideInInspector] _TerrainHolesTexture("TerrainHolesTexture", 2D) = "white" {}
 	    // Textures
 		[HideInInspector] _Splat0("Layer 0 (R)", 2D) = "white" {}
 		[HideInInspector] _Splat1("Layer 1 (G)", 2D) = "white" {}
@@ -162,6 +163,7 @@ Shader "BruteForce/InteractiveGrassTerrain"
 #ifdef LIGHTMAP_ON
 					half4 texcoord1 : TEXCOORD1;
 #endif
+				float2 uv_Control: TEXCOORD2;
 			};
 
 			struct v2g
@@ -178,6 +180,7 @@ Shader "BruteForce/InteractiveGrassTerrain"
 #ifdef LIGHTMAP_ON
 					float2 lmap : TEXCOORD6;
 #endif
+				float2 uv_Control: TEXCOORD7;
 			};
 
 			struct g2f
@@ -196,6 +199,7 @@ Shader "BruteForce/InteractiveGrassTerrain"
 #ifdef LIGHTMAP_ON
 					float2 lmap : TEXCOORD6;
 #endif
+				float2 uv_Control: TEXCOORD7;
 			};
 
 			struct SHADOW_VERTEX // This is needed for custom shadow casting
@@ -209,6 +213,7 @@ Shader "BruteForce/InteractiveGrassTerrain"
 			//uniform sampler2D _Control0;
 			Texture2D _Control0;
 			Texture2D _Control1;
+			sampler2D _TerrainHolesTexture;
 			uniform float _HasRT;
 
 			int _NumberOfStacks, _RTEffect, _MinimumNumberStacks, _UseBiplanar;
@@ -230,8 +235,7 @@ Shader "BruteForce/InteractiveGrassTerrain"
 			half4 _Specular0, _Specular1, _Specular2, _Specular3, _Specular4, _Specular5, _Specular6, _Specular7;
 			float4 _Splat0_ST, _Splat1_ST, _Splat2_ST, _Splat3_ST, _Splat4_STn, _Splat5_STn, _Splat6_STn, _Splat7_STn;
 			half _Metallic0, _Metallic1, _Metallic2, _Metallic3, _Metallic4, _Metallic5, _Metallic6, _Metallic7;
-			//sampler2D _Splat0, _Splat1, _Splat2, _Splat3, _Splat4, _Splat5, _Splat6, _Splat7;
-			//sampler2D _Normal0,_Normal1, _Normal2, _Normal3, _Normal4, _Normal5, _Normal6, _Normal7;
+
 			SamplerState my_linear_repeat_sampler;
 			SamplerState my_trilinear_repeat_sampler;
 			SamplerState my_linear_clamp_sampler;
@@ -268,6 +272,7 @@ Shader "BruteForce/InteractiveGrassTerrain"
 				o._ShadowCoord = ComputeScreenPos(o.pos);
 #endif
 				o.normal = v.normal;
+				o.uv_Control = v.uv_Control;
 				TRANSFER_VERTEX_TO_FRAGMENT(o);
 #ifdef LIGHTMAP_ON
 				o.lmap = v.texcoord1.xy * unity_LightmapST.xy + unity_LightmapST.zw;
@@ -295,8 +300,16 @@ Shader "BruteForce/InteractiveGrassTerrain"
 					o.uv = input[i].uv;
 					o.pos = input[i].pos;
 					o.color = 0.0 + _GrassCut;
+
+					half4 hole_control = tex2Dlod(_TerrainHolesTexture, float4(o.uv, 0, 0));
+					if (hole_control.r < 0.2f)
+					{
+						return;
+					}
+
 					o.normal = normalize(mul(float4(input[i].normal, 0.0), unity_WorldToObject).xyz);
 					o.worldPos = UnityObjectToWorld(input[i].objPos);
+					o.uv_Control = input[i].uv_Control;
 #ifdef SHADOWS_SCREEN
 					o._ShadowCoord = input[i]._ShadowCoord;
 #endif
@@ -348,6 +361,7 @@ Shader "BruteForce/InteractiveGrassTerrain"
 							o.color = (i / (_NumberOfStacks - _GrassCut));
 							o.uv = input[ii].uv;
 							o.pos = UnityObjectToClipPos(objSpace);
+							o.uv_Control = input[ii].uv_Control;
 #ifdef SHADOWS_SCREEN
 							o._ShadowCoord = P;
 #endif
@@ -398,8 +412,8 @@ Shader "BruteForce/InteractiveGrassTerrain"
 				}
 #endif
 				
-				half4 splat_control = _Control0.Sample(my_linear_clamp_sampler, i.uv + dis.xy * 0.05);
-				half4 splat_control1 = _Control1.Sample(my_linear_clamp_sampler, i.uv + dis.xy * 0.05);
+				half4 splat_control = _Control0.Sample(my_linear_clamp_sampler, i.uv_Control + dis.xy * 0.05);
+				half4 splat_control1 = _Control1.Sample(my_linear_clamp_sampler, i.uv_Control + dis.xy * 0.05);
 
 				// SplatTexture //
 				float3 grassPatternSplat0 = _Splat0.Sample(my_linear_repeat_sampler, i.uv * _TilingN1 * _Splat0_ST.z + dis.xy);
@@ -591,6 +605,7 @@ Shader "BruteForce/InteractiveGrassTerrain"
 #ifdef USE_VR
 			UNITY_VERTEX_INPUT_INSTANCE_ID
 #endif
+			float2 uv_Control: TEXCOORD1;
 		};
 
 		struct v2g
@@ -602,6 +617,7 @@ Shader "BruteForce/InteractiveGrassTerrain"
 #ifdef USE_VR
 			UNITY_VERTEX_INPUT_INSTANCE_ID
 #endif
+			float2 uv_Control: TEXCOORD4;
 		};
 
 		struct g2f
@@ -615,6 +631,7 @@ Shader "BruteForce/InteractiveGrassTerrain"
 			UNITY_VERTEX_INPUT_INSTANCE_ID
 			UNITY_VERTEX_OUTPUT_STEREO
 #endif
+			float2 uv_Control: TEXCOORD4;
 		};
 
 		struct SHADOW_VERTEX
@@ -658,6 +675,7 @@ Shader "BruteForce/InteractiveGrassTerrain"
 			Texture2D _Splat5;
 			Texture2D _Splat6;
 			Texture2D _Splat7;
+			sampler2D _TerrainHolesTexture;
 
 					v2g vert(appdata v)
 					{
@@ -670,6 +688,7 @@ Shader "BruteForce/InteractiveGrassTerrain"
 						o.pos = UnityObjectToClipPos(v.vertex);
 						o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 						o.normal = v.normal;
+						o.uv_Control = v.uv_Control;
 #ifdef USE_SC
 						TRANSFER_SHADOW_CASTER_NORMALOFFSET(o)
 #endif
@@ -698,6 +717,13 @@ Shader "BruteForce/InteractiveGrassTerrain"
 							o.color = float3(0 + _GrassCut, 0 + _GrassCut, 0 + _GrassCut);
 							o.normal = normalize(mul(float4(input[i].normal, 0.0), unity_WorldToObject).xyz);
 							o.worldPos = UnityObjectToWorld(input[i].objPos);
+							o.uv_Control = input[i].uv_Control;
+
+							half4 hole_control = tex2Dlod(_TerrainHolesTexture, float4(o.uv, 0, 0));
+							if (hole_control.r < 0.2f)
+							{
+								return;
+							}
 
 							tristream.Append(o);
 						}
@@ -736,6 +762,7 @@ Shader "BruteForce/InteractiveGrassTerrain"
 								o.pos = UnityObjectToClipPos(objSpace);
 								o.worldPos = UnityObjectToWorld(objSpace);
 								o.normal = normalize(mul(float4(input[ii].normal, 0.0), unity_WorldToObject).xyz);
+								o.uv_Control = input[ii].uv_Control;
 								tristream.Append(o);
 							}
 							tristream.RestartStrip();
@@ -777,8 +804,8 @@ Shader "BruteForce/InteractiveGrassTerrain"
 				}
 #endif
 				
-				half4 splat_control = _Control0.Sample(my_linear_clamp_sampler, i.uv + dis.xy * 0.05);
-				half4 splat_control1 = _Control1.Sample(my_linear_clamp_sampler, i.uv + dis.xy * 0.05);
+				half4 splat_control = _Control0.Sample(my_linear_clamp_sampler, i.uv_Control + dis.xy * 0.05);
+				half4 splat_control1 = _Control1.Sample(my_linear_clamp_sampler, i.uv_Control + dis.xy * 0.05);
 
 				_Metallic0 = floor(_Metallic0);
 				_Metallic1 = floor(_Metallic1);
@@ -850,20 +877,25 @@ Blend One One // Soft Additive
 
 	  CGPROGRAM
 
-		#pragma vertex vert
-		#pragma fragment frag
-		#pragma geometry geom
+		  #pragma vertex vert
+		  #pragma fragment frag
+		  #pragma geometry geom
 			
-			#pragma shader_feature USE_RT
-			#pragma shader_feature USE_BP
-			#pragma shader_feature USE_VR
-		#include "UnityCG.cginc"
-		uniform float4 _LightColor0;
-		uniform float4x4 unity_WorldToLight;
-		uniform sampler2D _LightTexture0;
+		  #pragma shader_feature USE_RT
+		  #pragma shader_feature USE_BP
+		  #pragma shader_feature USE_VR
+		  
+		  #pragma multi_compile_fwdadd_fullshadows
+		  #include "UnityCG.cginc"
+		  #include "Lighting.cginc"
+		  #include "AutoLight.cginc"
 
-		  uniform float4 _SpecColor;
-		  uniform float _Shininess;
+		  //uniform float4 _LightColor0;
+		  //uniform float4x4 unity_WorldToLight;
+		  //uniform sampler2D _LightTexture0;
+
+		  //uniform float4 _SpecColor;
+		  //uniform float _Shininess;
 		  Texture2D _MainTex;
 		  Texture2D _NoGrassTex;
 		  Texture2D _Noise;
@@ -910,6 +942,7 @@ Blend One One // Soft Additive
 		  Texture2D _Normal5;
 		  Texture2D _Normal6;
 		  Texture2D _Normal7;
+		  sampler2D _TerrainHolesTexture;
 
 
 		  half _LightIntensity, _GrassSaturation;
@@ -926,6 +959,7 @@ Blend One One // Soft Additive
 #ifdef USE_VR
 			  UNITY_VERTEX_INPUT_INSTANCE_ID
 #endif
+			  float2 uv_Control: TEXCOORD3;
 		  };
 
 		  struct v2g {
@@ -938,6 +972,7 @@ Blend One One // Soft Additive
 #ifdef USE_VR
 			 UNITY_VERTEX_INPUT_INSTANCE_ID
 #endif
+			 float2 uv_Control: TEXCOORD4;
 		  };
 
 		  struct g2f {
@@ -951,6 +986,7 @@ Blend One One // Soft Additive
 			  UNITY_VERTEX_INPUT_INSTANCE_ID
 			  UNITY_VERTEX_OUTPUT_STEREO
 #endif
+			  float2 uv_Control: TEXCOORD5;
 		  };
 
 		  v2g vert(appdata v)
@@ -965,16 +1001,21 @@ Blend One One // Soft Additive
 			  float4x4 modelMatrixInverse = unity_WorldToObject;
 			  o.objPos = v.vertex;
 			  o.worldPos = mul(modelMatrix, v.vertex);
+#if defined(SPOT) || defined(POINT)
 			  o.posLight = mul(unity_WorldToLight, o.worldPos);
+#else
+			  o.posLight = mul(modelMatrix, v.vertex);
+#endif
 			  o.normal = v.normal;
 			  o.pos = UnityObjectToClipPos(v.vertex);
 			  o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+			  o.uv_Control = v.uv_Control;
 
 			  return o;
 		  }
 
 #define UnityObjectToWorld(o) mul(unity_ObjectToWorld, float4(o.xyz,1.0))
-		  [maxvertexcount(53)]
+		  [maxvertexcount(50)]
 		  void geom(triangle v2g input[3], inout TriangleStream<g2f> tristream) {
 
 			  g2f o;
@@ -991,9 +1032,19 @@ Blend One One // Soft Additive
 				  o.uv = input[i].uv;
 				  o.pos = input[i].pos;
 				  o.color = float3(0 + _GrassCut, 0 + _GrassCut, 0 + _GrassCut);
-				  o.normal = normalize(mul(float4(input[i].normal, 0.0), unity_WorldToObject).xyz);
+				  o.normal = input[i].normal;
 				  o.worldPos = UnityObjectToWorld(input[i].objPos);
+#if defined(SPOT) || defined(POINT)
 				  o.posLight = mul(unity_WorldToLight, input[i].worldPos);
+#else
+				  o.posLight = UnityObjectToWorld(input[i].objPos);
+#endif
+				  o.uv_Control = input[i].uv_Control;
+				  half4 hole_control = tex2Dlod(_TerrainHolesTexture, float4(o.uv, 0, 0));
+				  if (hole_control.r < 0.2f)
+				  {
+					  return;
+				  }
 
 				  tristream.Append(o);
 			  }
@@ -1031,8 +1082,14 @@ Blend One One // Soft Additive
 					  o.uv = input[ii].uv;
 					  o.pos = UnityObjectToClipPos(objSpace);
 					  o.worldPos = UnityObjectToWorld(objSpace);
+#if defined(SPOT) || defined(POINT)
 					  o.normal = normalize(mul(float4(input[ii].normal, 0.0), unity_WorldToObject).xyz);
 					  o.posLight = mul(unity_WorldToLight, input[ii].worldPos);
+#else
+					  o.normal = normalize(mul(float4(input[ii].normal, 0.0), unity_WorldToObject).xyz);
+					  o.posLight = o.worldPos;
+#endif
+					  o.uv_Control = input[ii].uv_Control;
 
 					  tristream.Append(o);
 				  }
@@ -1075,8 +1132,8 @@ Blend One One // Soft Additive
 					ripples3 = (0 - ripples2) * ripples2;
 				}
 #endif
-				half4 splat_control = _Control0.Sample(my_linear_clamp_sampler, i.uv + dis.xy * 0.05);
-				half4 splat_control1 = _Control1.Sample(my_linear_clamp_sampler, i.uv + dis.xy * 0.05);
+				half4 splat_control = _Control0.Sample(my_linear_clamp_sampler, i.uv_Control + dis.xy * 0.05);
+				half4 splat_control1 = _Control1.Sample(my_linear_clamp_sampler, i.uv_Control + dis.xy * 0.05);
 
 				float3 grassPatternSplat0 = _Splat0.Sample(my_linear_repeat_sampler, i.uv * _TilingN1 * _Splat0_ST.z + dis.xy);
 				float3 grassPatternSplat1 = _Splat1.Sample(my_linear_repeat_sampler, i.uv * _TilingN1 * _Splat1_ST.z + dis.xy);
@@ -1121,30 +1178,36 @@ Blend One One // Soft Additive
 			 float attenuation;
 			 float cookieAttenuation = 1.0;
 
+
+#if defined(DIRECTIONAL)
 			 if (0.0 == _WorldSpaceLightPos0.w) // directional light
 			 {
 				attenuation = 1.0; // no attenuation
 				lightDirection = normalize(_WorldSpaceLightPos0.xyz);
-				cookieAttenuation = tex2D(_LightTexture0, i.posLight.xy).a;
+				//cookieAttenuation = tex2D(_LightTexture0, i.posLight.xy).a;
 			 }
-			 else if (1.0 != unity_WorldToLight[3][3]) // spot light
+#endif
+
+#if defined(SPOT) || defined(POINT)
+			 if (1.0 != unity_WorldToLight[3][3]) // spot light
 			 {
 				 attenuation = 1.0; // no attenuation
-				 lightDirection = normalize(_WorldSpaceLightPos0.xyz);
-				 cookieAttenuation = tex2D(_LightTexture0,i.posLight.xy / i.posLight.w + float2(0.5, 0.5)).a;
+				 UNITY_LIGHT_ATTENUATION(atten, i, i.worldPos.xyz);
+				 attenuation = atten * 2;
+				 float3 vertexToLightSource = _WorldSpaceLightPos0.xyz - i.worldPos.xyz;
+				 lightDirection = normalize(vertexToLightSource);
+				 cookieAttenuation = tex2D(_LightTexture0, i.posLight.xy / i.posLight.w + float2(0.5, 0.5)).a;
 			 }
 			 else // point light
 			 {
-				float3 vertexToLightSource = _WorldSpaceLightPos0.xyz - i.worldPos.xyz;
-				//float distance = length(vertexToLightSource);
-				//attenuation = 1.0 / distance; // linear attenuation 
-				lightDirection = normalize(vertexToLightSource);
+				 float3 vertexToLightSource = _WorldSpaceLightPos0.xyz - i.worldPos.xyz;
+				 lightDirection = normalize(vertexToLightSource);
 
-				float3 lightCoord = mul(unity_WorldToLight, float4(i.worldPos.xyz, 1)).xyz;
-				fixed atten = tex2D(_LightTexture0, dot(lightCoord, lightCoord).rr).UNITY_ATTEN_CHANNEL;
-				half ndotl = saturate(dot(i.normal, lightDirection));
-				attenuation = ndotl * atten;
+				 half ndotl = saturate(dot(i.normal, lightDirection));
+				 UNITY_LIGHT_ATTENUATION(atten, i, i.worldPos.xyz);
+				 attenuation = ndotl * atten;
 			 }
+#endif
 			 float3 diffuseReflection = attenuation * _LightColor0.rgb  * max(0.0, dot(normalDirection, lightDirection));
 			 float3 finalLightColor = cookieAttenuation * diffuseReflection;
 			 finalLightColor *= _LightIntensity;

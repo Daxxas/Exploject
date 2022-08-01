@@ -21,8 +21,4 @@ public class UIHandler : MonoBehaviour
         // mapGenerator.generationEquation = equationField.text;
     }
 
-    public void UpdateSeed()
-    {
-        mapDataGenerator.seed = int.Parse(seedField.text);
-    }
 }

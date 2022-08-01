@@ -766,10 +766,14 @@ Shader "BruteForce/InteractiveGrass"
 			#pragma shader_feature USE_SS
 			#pragma shader_feature USE_CS
 
+			#pragma multi_compile_fwdadd_fullshadows
 			#include "UnityCG.cginc"
-			uniform float4 _LightColor0;
-			uniform float4x4 unity_WorldToLight;
-			uniform sampler2D _LightTexture0;
+			#include "Lighting.cginc"
+			#include "AutoLight.cginc"
+
+			//uniform float4 _LightColor0;
+			//uniform float4x4 unity_WorldToLight;
+			//uniform sampler2D _LightTexture0;
 
 			Texture2D _MainTex;
 			Texture2D _NoGrassTex;
@@ -845,7 +849,13 @@ Shader "BruteForce/InteractiveGrass"
 				  float4x4 modelMatrixInverse = unity_WorldToObject;
 				  o.objPos = v.vertex;
 				  o.worldPos = mul(modelMatrix, v.vertex);
+
+#if defined(SPOT) || defined(POINT)
 				  o.posLight = mul(unity_WorldToLight, o.worldPos);
+#else
+				  o.posLight = mul(modelMatrix, v.vertex);
+#endif
+
 				  o.normal = v.normal;
 				  o.pos = UnityObjectToClipPos(v.vertex);
 				  o.uv = TRANSFORM_TEX(v.uv, _MainTex);
@@ -881,9 +891,17 @@ Shader "BruteForce/InteractiveGrass"
 					  o.uv = input[j].uv;
 					  o.pos = input[j].pos;
 					  o.color = float3(0 + _GrassCut, 0 + _GrassCut, 0 + _GrassCut);
-					  o.normal = normalize(mul(float4(input[j].normal, 0.0), unity_WorldToObject).xyz);
-					  o.worldPos = UnityObjectToWorld(input[j].objPos);
+#ifdef spot
+					  o.normal = normalize(mul(float4(input[j].normal, 0.0), input[j].worldPos).xyz);
+#else
+					  o.normal = input[j].normal;
+#endif
+					  o.worldPos = UnityObjectToWorld(input[j].objPos); 
+#if defined(SPOT) || defined(POINT)
 					  o.posLight = mul(unity_WorldToLight, input[j].worldPos);
+#else
+					  o.posLight = UnityObjectToWorld(input[j].objPos);
+#endif
 
 					  tristream.Append(o);
 				  }
@@ -929,9 +947,14 @@ Shader "BruteForce/InteractiveGrass"
 #endif
 						  o.uv = input[ii].uv;
 						  o.pos = UnityObjectToClipPos(objSpace);
-						  o.worldPos = UnityObjectToWorld(objSpace);
+						  o.worldPos = UnityObjectToWorld(objSpace); 
+#if defined(SPOT) || defined(POINT)
 						  o.normal = normalize(mul(float4(input[ii].normal, 0.0), unity_WorldToObject).xyz);
 						  o.posLight = mul(unity_WorldToLight, input[ii].worldPos);
+#else
+						  o.normal = normalize(mul(float4(input[ii].normal, 0.0), unity_WorldToObject).xyz);
+						  o.posLight = o.worldPos;
+#endif
 
 						  tristream.Append(o);
 					  }
@@ -1004,15 +1027,21 @@ Shader "BruteForce/InteractiveGrass"
 				 float attenuation;
 				 float cookieAttenuation = 1.0;
 
+#if defined(DIRECTIONAL)
 				 if (0.0 == _WorldSpaceLightPos0.w) // directional light
 				 {
 					attenuation = 1.0; // no attenuation
 					lightDirection = normalize(_WorldSpaceLightPos0.xyz);
-					cookieAttenuation = tex2D(_LightTexture0, i.posLight.xy).a;
+					//cookieAttenuation = tex2D(_LightTexture0, i.posLight.xy).a;
 				 }
-				 else if (1.0 != unity_WorldToLight[3][3]) // spot light
+#endif
+
+#if defined(SPOT) || defined(POINT)
+				 if (1.0 != unity_WorldToLight[3][3]) // spot light
 				 {
 					 attenuation = 1.0; // no attenuation
+					 UNITY_LIGHT_ATTENUATION(atten, i, i.worldPos.xyz);
+					 attenuation = atten * 10;
 					 lightDirection = normalize(_WorldSpaceLightPos0.xyz);
 					 cookieAttenuation = tex2D(_LightTexture0,i.posLight.xy / i.posLight.w + float2(0.5, 0.5)).a;
 				 }
@@ -1021,11 +1050,12 @@ Shader "BruteForce/InteractiveGrass"
 					float3 vertexToLightSource = _WorldSpaceLightPos0.xyz - i.worldPos.xyz;
 					lightDirection = normalize(vertexToLightSource);
 
-					float3 lightCoord = mul(unity_WorldToLight, float4(i.worldPos.xyz, 1)).xyz;
-					fixed atten = tex2D(_LightTexture0, dot(lightCoord, lightCoord).rr).UNITY_ATTEN_CHANNEL;
 					half ndotl = saturate(dot(i.normal, lightDirection));
+					UNITY_LIGHT_ATTENUATION(atten, i, i.worldPos.xyz);
 					attenuation = ndotl * atten;
 				 }
+#endif
+
 				 float3 diffuseReflection = attenuation * _LightColor0.rgb  * max(0.0, dot(normalDirection, lightDirection));
 				 float3 finalLightColor = cookieAttenuation * diffuseReflection*saturate(i.color.r + 0.5);
 				 finalLightColor *= _LightIntensity;
