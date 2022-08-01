@@ -143,11 +143,13 @@ public struct MarchCubeJob : IJobParallelFor
                     // Determine if vertex is border
                     bool isBorderIndexA = marchCube[indexA].p.x < resolution || marchCube[indexA].p.z < resolution || 
                                       marchCube[indexA].p.x > MapDataGenerator.ChunkSize+(resolution) || marchCube[indexA].p.z > MapDataGenerator.ChunkSize+(resolution);
-                    bool isBorderInexB = marchCube[indexB].p.x < resolution || marchCube[indexB].p.z < resolution ||
+                    bool isBorderIndexB = marchCube[indexB].p.x < resolution || marchCube[indexB].p.z < resolution ||
                                       marchCube[indexB].p.x > MapDataGenerator.ChunkSize+(resolution) || marchCube[indexB].p.z > MapDataGenerator.ChunkSize+(resolution);
-                    triangle.SetEdgeBorder(j, isBorderIndexA || isBorderInexB);
+                    triangle.SetEdgeBorder(j, isBorderIndexA || isBorderIndexB);
                     triangle.biome = biomesForTerrainChunk[to1D(x, z)];
                 }
+                
+                
                 
                 // Triangles are stored in a queue because we don't know how many triangles we will get & we can write in parallel easily in a queue
                 triangles.Enqueue(triangle);
