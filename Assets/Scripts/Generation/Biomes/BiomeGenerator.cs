@@ -13,8 +13,6 @@ public class BiomeGenerator : MonoBehaviour
     public static BiomeGenerator Instance => instance;
 
     [SerializeField] private BiomePipeline pipeline;
-    [SerializeField] private Biome oceanBiome;
-    [SerializeField] private Biome plainBiome;
     public BiomePipeline Pipeline => pipeline;
 
     private Dictionary<FixedString32Bytes, Biome> biomeDictionary = new Dictionary<FixedString32Bytes, Biome>();
@@ -78,15 +76,8 @@ public class BiomeGenerator : MonoBehaviour
     
     public Biome GetBiomeAtPos(int2 pos)
     {
-        int continentalnessIndex = MathUtil.NormalizeIndex(pipeline.GenerationConfiguration.yContinentalness.GetNoise(GenerationInfo.seed, pos.x, pos.y), 2);
+        int continentalnessIndex = MathUtil.NormalizeIndex(pipeline.GenerationConfiguration.yContinentalness.GetNoise(GenerationInfo.seed, pos.x, pos.y), pipeline.biomes.Count);
         
-        if (continentalnessIndex == 0)
-        {
-            return oceanBiome;
-        }
-        else
-        {
-            return plainBiome;
-        }
+        return pipeline.biomes[continentalnessIndex];
     }
 }
