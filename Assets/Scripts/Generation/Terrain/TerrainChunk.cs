@@ -31,16 +31,51 @@ public class TerrainChunk : MonoBehaviour
     private int resolution;
     private int supportedChunkSize => MapDataGenerator.ChunkSize + resolution * 3;
 
-    public JobHandle chunkMeshJob;
-    public JobHandle marchHandle;
+    private JobHandle chunkMeshHandle;
+    private JobHandle marchHandle;
+    private JobHandle mapDataHandle;
+    private JobHandle colliderJobHandle;
 
     private bool safeToRemove = false;
     private bool removeRequest = false;
     public bool SafeToRemove => safeToRemove;
 
+    public static NativeArray<int> cornerIndexAFromEdge;
+    public static NativeArray<int> cornerIndexBFromEdge;
+    public static NativeArray<int> triangulation1D;
+
     // TODO : Dynamic LOD System
     [SerializeField] private GameObject chunkLOD1;
+    
+    private NativeQueue<Triangle> triangles;
+    private NativeParallelHashMap<Edge, float3> uniqueVertices;
+    private NativeParallelHashMap<BiomeHolder, UnsafeList<int>> chunkTriangles;
+    private NativeList<Vector3> chunkVertices;
+    private NativeList<Vector3> chunkNormals;
+    private NativeArray<float> generatedMap;
+    private NativeArray<BiomeHolder> biomesForTerrainChunk;
+    private NativeList<BiomeHolder> biomesInChunk;
 
+
+    public static void InitMarchCubeArrays()
+    {
+        if (!cornerIndexAFromEdge.IsCreated)
+        {
+            cornerIndexAFromEdge = new NativeArray<int>(12, Allocator.Persistent);
+            cornerIndexAFromEdge.CopyFrom(MarchTable.cornerIndexAFromEdgeArray);
+        }
+        if (!cornerIndexBFromEdge.IsCreated)
+        {
+            cornerIndexBFromEdge = new NativeArray<int>(12, Allocator.Persistent);
+            cornerIndexBFromEdge.CopyFrom(MarchTable.cornerIndexBFromEdgeArray);
+        }
+        if (!triangulation1D.IsCreated)
+        {
+            triangulation1D = new NativeArray<int>(4096, Allocator.Persistent);
+            triangulation1D.CopyFrom(MarchTable.triangulation1DArray);
+        }
+    }
+    
     /// <summary>
     /// Initialize chunk and starts generation
     /// </summary>
@@ -60,15 +95,13 @@ public class TerrainChunk : MonoBehaviour
         this.resolution = resolution;
 
         // Variables that will be filled & passed along jobs
-        NativeArray<float> generatedMap = new NativeArray<float>(MapDataGenerator.chunkHeight * supportedChunkSize * supportedChunkSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        generatedMap = new NativeArray<float>(MapDataGenerator.chunkHeight * supportedChunkSize * supportedChunkSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        biomesForTerrainChunk = BiomeGenerator.Instance.GetBiomesForTerrainChunk(coord);
+        biomesInChunk = BiomeGenerator.Instance.GetBiomesInChunk(coord);
         
-        NativeArray<BiomeHolder> biomesForTerrainChunk =  BiomeGenerator.Instance.GetBiomesForTerrainChunk(coord);
+        mapDataHandle = MapDataGenerator.Instance.GenerateMapData(position, generatedMap);
 
-        NativeList<BiomeHolder> biomesInChunk = BiomeGenerator.Instance.GetBiomesInChunk(coord);
-        
-        var mapDataHandle = MapDataGenerator.Instance.GenerateMapData(position, generatedMap);
-
-        chunkMeshJob = GenerateChunkMesh(generatedMap, biomesForTerrainChunk, biomesInChunk, mapDataHandle);
+        chunkMeshHandle = GenerateChunkMesh(generatedMap, biomesForTerrainChunk, biomesInChunk, mapDataHandle);
         
         return this;
     }
@@ -109,6 +142,38 @@ public class TerrainChunk : MonoBehaviour
             removeRequest = true;
         }
     }
+
+    public void DisposeTerrainChunk()
+    {
+        mapDataHandle.Complete();
+        chunkMeshHandle.Complete();
+        marchHandle.Complete();
+        colliderJobHandle.Complete();
+        
+        if(triangles.IsCreated) triangles.Dispose();
+        if(uniqueVertices.IsCreated) uniqueVertices.Dispose();
+
+        foreach (var chunkTriangle in chunkTriangles)
+        {
+            if(chunkTriangle.Value.IsCreated) chunkTriangle.Value.Dispose();
+        }
+        
+        if(chunkTriangles.IsCreated) chunkTriangles.Dispose();
+        
+        if(chunkVertices.IsCreated) chunkVertices.Dispose();
+        if(chunkNormals.IsCreated) chunkNormals.Dispose();
+        if(generatedMap.IsCreated) generatedMap.Dispose();
+        if(biomesForTerrainChunk.IsCreated) biomesForTerrainChunk.Dispose();
+        if(biomesInChunk.IsCreated) biomesInChunk.Dispose();
+        
+    }
+
+    public static void DisposeMarchCubeArrays()
+    {
+        if(cornerIndexAFromEdge.IsCreated) cornerIndexAFromEdge.Dispose();
+        if(cornerIndexBFromEdge.IsCreated) cornerIndexBFromEdge.Dispose();
+        if(triangulation1D.IsCreated) triangulation1D.Dispose();
+    }
     
     //////////////////////////////////////////////////////////////////
     // Jobs
@@ -122,17 +187,17 @@ public class TerrainChunk : MonoBehaviour
     /// <returns></returns>
     public JobHandle GenerateChunkMesh(NativeArray<float> generatedMap, NativeArray<BiomeHolder> biomesForTerrainChunk, NativeList<BiomeHolder> biomesInChunk, JobHandle mapDataHandle)
     {
-        NativeQueue<Triangle> triangles = new NativeQueue<Triangle>(Allocator.TempJob);
-        NativeParallelHashMap<Edge, float3> uniqueVertices = new NativeParallelHashMap<Edge, float3>((MapDataGenerator.chunkHeight * supportedChunkSize * supportedChunkSize), Allocator.Persistent);
-
-        NativeParallelHashMap<BiomeHolder, UnsafeList<int>> chunkTriangles = new NativeParallelHashMap<BiomeHolder, UnsafeList<int>>(2,Allocator.TempJob);
+        triangles = new NativeQueue<Triangle>(Allocator.TempJob);
+        uniqueVertices = new NativeParallelHashMap<Edge, float3>((MapDataGenerator.chunkHeight * supportedChunkSize * supportedChunkSize), Allocator.Persistent);
+        chunkTriangles = new NativeParallelHashMap<BiomeHolder, UnsafeList<int>>(2,Allocator.TempJob);
+        
         foreach (var biomeTriangles in chunkTriangles)
         {
             biomeTriangles.Value = new UnsafeList<int>(MapDataGenerator.chunkHeight * supportedChunkSize * supportedChunkSize * 3, Allocator.TempJob);
         }
         
-        NativeList<Vector3> chunkVertices = new NativeList<Vector3>(Allocator.TempJob);
-        NativeList<Vector3> chunkNormals = new NativeList<Vector3>(Allocator.TempJob);
+        chunkVertices = new NativeList<Vector3>(Allocator.TempJob);
+        chunkNormals = new NativeList<Vector3>(Allocator.TempJob);
         
         Mesh mesh = new Mesh();
 
@@ -146,9 +211,9 @@ public class TerrainChunk : MonoBehaviour
             resolution = resolution,
             biomesForTerrainChunk = biomesForTerrainChunk,
             // March table 
-            cornerIndexAFromEdge = EndlessTerrain.cornerIndexAFromEdge,
-            cornerIndexBFromEdge = EndlessTerrain.cornerIndexBFromEdge,
-            triangulation = EndlessTerrain.triangulation1D,
+            cornerIndexAFromEdge = cornerIndexAFromEdge,
+            cornerIndexBFromEdge = cornerIndexBFromEdge,
+            triangulation = triangulation1D,
             // Arrays to fill with this job
             triangles = triangles.AsParallelWriter(),
             vertices = uniqueVertices.AsParallelWriter(),
@@ -180,9 +245,7 @@ public class TerrainChunk : MonoBehaviour
         biomesForTerrainChunk.Dispose(marchHandle);
 
         StartCoroutine(ApplyMeshData(mesh, chunkVertices, chunkNormals, chunkTriangles, chunkMeshHandle));
-        
 
-        
         return chunkMeshHandle;
     }
     
@@ -244,7 +307,7 @@ public class TerrainChunk : MonoBehaviour
                 meshId = mesh.GetInstanceID()
             };
 
-            JobHandle colliderJobHandle = colliderJob.Schedule();
+            colliderJobHandle = colliderJob.Schedule();
 
             mesh.RecalculateTangents();
 

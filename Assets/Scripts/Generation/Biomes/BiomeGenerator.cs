@@ -76,8 +76,16 @@ public class BiomeGenerator : MonoBehaviour
     
     public Biome GetBiomeAtPos(int2 pos)
     {
-        int continentalnessIndex = MathUtil.NormalizeIndex(pipeline.GenerationConfiguration.yContinentalness.GetNoise(GenerationInfo.seed, pos.x, pos.y), pipeline.biomes.Count);
-        
-        return pipeline.biomes[continentalnessIndex];
+        float yContinentalness = pipeline.GenerationConfiguration.yContinentalness.GetNoise(GenerationInfo.seed, pos.x, pos.y);
+        if (yContinentalness > pipeline.landBiomeThreshold)
+        {
+            // return land biome
+            return pipeline.biomes[1];
+        }
+        else
+        {
+            // return water biome
+            return pipeline.biomes[0];
+        }
     }
 }

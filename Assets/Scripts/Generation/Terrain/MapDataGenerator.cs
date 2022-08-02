@@ -33,9 +33,6 @@ public class MapDataGenerator : MonoBehaviour
     // for 17 dots as chunk
     // so we have 16 blocks per chunk, hence the + 3
 
-    private VanillaEquation vanillaEquation;
-    private FunctionPointer<TerrainEquation.TerrainEquationDelegate> compiledDelegate;
-
 
     [ExecuteAlways]
     private void Awake()
@@ -54,7 +51,7 @@ public class MapDataGenerator : MonoBehaviour
         generationConfiguration.sampledyContinentCurve = new SampledNoiseCurve(generationConfiguration.yContinentCurve, curveSampleCount);
     }
 
-    private void OnDestroy()
+    public void Dispose()
     {
         generationConfiguration.sampledsquashContinentCurve.Dispose();
         generationConfiguration.sampledyContinentCurve.Dispose();
@@ -133,23 +130,6 @@ public class MapDataGenerator : MonoBehaviour
                 generatedMap[idx] = math.NAN;
             }
         }
-    }
-
-    [ContextMenu("UnsafeTest")]
-    private unsafe void UnsafeTest()
-    {
-        NativeArray<UnsafeList<int>> testArray = new NativeArray<UnsafeList<int>>(3, Allocator.Persistent);
-        testArray[0] = new UnsafeList<int>(3, Allocator.Persistent);
-        
-        var list = testArray[0];
-        list.Add(4);
-        list.Add(5);
-        list.Add(6);
-        testArray[0] = list;
-
-        Debug.Log(testArray[0].Length);
-
-        testArray.Dispose();
     }
 }
 

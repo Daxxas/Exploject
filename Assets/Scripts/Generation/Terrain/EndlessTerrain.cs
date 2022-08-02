@@ -38,10 +38,6 @@ public class EndlessTerrain : MonoBehaviour
     
     private Vector2 viewerChunkPos;
     public Vector2 ViewerChunkPos => viewerChunkPos;
-    
-    public static NativeArray<int> cornerIndexAFromEdge;
-    public static NativeArray<int> cornerIndexBFromEdge;
-    public static NativeArray<int> triangulation1D;
 
     private void Awake()
     {
@@ -55,26 +51,11 @@ public class EndlessTerrain : MonoBehaviour
             Destroy(this);
         }
         
+        TerrainChunk.InitMarchCubeArrays();
     }
 
     private void Start()
     {
-        if (!cornerIndexAFromEdge.IsCreated)
-        {
-            cornerIndexAFromEdge = new NativeArray<int>(12, Allocator.Persistent);
-            cornerIndexAFromEdge.CopyFrom(MarchTable.cornerIndexAFromEdgeArray);
-        }
-        if (!cornerIndexBFromEdge.IsCreated)
-        {
-            cornerIndexBFromEdge = new NativeArray<int>(12, Allocator.Persistent);
-            cornerIndexBFromEdge.CopyFrom(MarchTable.cornerIndexBFromEdgeArray);
-        }
-        if (!triangulation1D.IsCreated)
-        {
-            triangulation1D = new NativeArray<int>(4096, Allocator.Persistent);
-            triangulation1D.CopyFrom(MarchTable.triangulation1DArray);
-        }
-        
         UpdateViewerPos();
     }
 
@@ -218,25 +199,18 @@ public class EndlessTerrain : MonoBehaviour
         }
     }
 
-    private void GetBiomeForPos(Vector2 pos)
-    {
-        
-    }
-    
-    
     private void OnDestroy()
     {
-        foreach (var terrainChunk in terrainChunkDic)
+
+        foreach (var chunk in terrainChunkDic)
         {
-            terrainChunk.Value.marchHandle.Complete();
-            terrainChunk.Value.chunkMeshJob.Complete();
+            chunk.Value.DisposeTerrainChunk();
         }
         
-        if(cornerIndexAFromEdge.IsCreated) cornerIndexAFromEdge.Dispose();
-        if(cornerIndexBFromEdge.IsCreated) cornerIndexBFromEdge.Dispose();
-        if(triangulation1D.IsCreated) triangulation1D.Dispose();
+        TerrainChunk.DisposeMarchCubeArrays();
+        MapDataGenerator.Instance.Dispose();
     }
-    
+
     private void OnDrawGizmos()
     {
         // int currentChunkCoordX = Mathf.RoundToInt((viewerPosition.x / chunkSize)) * chunkSize  + chunkSize/2;
@@ -247,10 +221,11 @@ public class EndlessTerrain : MonoBehaviour
         // Gizmos.color = Color.magenta;
         // Gizmos.DrawWireCube(cubepos, new Vector3(chunkSize,256,chunkSize));
     }
+}
 
-    private class ChunkPos : FastPriorityQueueNode
-    {
-        public Vector2 pos;
-        public TerrainChunk chunk;
-    }
+
+public class ChunkPos : FastPriorityQueueNode
+{
+    public Vector2 pos;
+    public TerrainChunk chunk;
 }

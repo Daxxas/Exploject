@@ -11,5 +11,6 @@ public class BiomePipeline : ScriptableObject
     [SerializeField] private GenerationConfiguration generationConfiguration;
     public GenerationConfiguration GenerationConfiguration => generationConfiguration;
     public List<Biome> biomes = new List<Biome>();
+    public float landBiomeThreshold;
 }
 

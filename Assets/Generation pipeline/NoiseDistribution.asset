@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: df3b4ddca92a47489e5b8e5666a68b0c, type: 3}
-  m_Name: SourceNoise
+  m_Name: NoiseDistribution
   m_EditorClassIdentifier: 
   yContinentalness:
     mFrequency: 0.001

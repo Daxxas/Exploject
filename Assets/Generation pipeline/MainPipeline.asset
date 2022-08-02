@@ -49,3 +49,4 @@ MonoBehaviour:
   biomes:
   - {fileID: 11400000, guid: 50e5372f0736dc74a846576a48805391, type: 2}
   - {fileID: 11400000, guid: 5105e0f57fbd95747850c4e18a275b0e, type: 2}
+  landBiomeThreshold: 0
