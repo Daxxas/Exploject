@@ -13,9 +13,10 @@ public class FixedTerrain : MonoBehaviour
     [SerializeField] private Transform terrainParent;
     [SerializeField] private GameObject chunkObject;
     [SerializeField] private Vector2 offset = Vector2.zero;
-    private Queue<ChunkPos> chunkLoadQueue = new Queue<ChunkPos>();
-
+    [SerializeField] private bool performanceMode = true;
+    [SerializeField] private int maxChunkPerFrame = 2;
     private List<TerrainChunk> chunks = new List<TerrainChunk>();
+    private Queue<ChunkPos> chunkPosQueue = new Queue<ChunkPos>();
 
     private Timer generationTimer;
     
@@ -38,17 +39,56 @@ public class FixedTerrain : MonoBehaviour
 
     private void Update()
     {
-        // int chunkLoadCount = 0;
-        // while (chunkLoadQueue.Count > 0 && chunkLoadCount < maxChunkPerFrame)
-        // {
-        //     ChunkPos chunkPos = chunkLoadQueue.Dequeue();
-        //     chunkPos.chunk.InitChunk(chunkPos.pos, MapDataGenerator.Instance.resolution);
-        //     chunkLoadCount++;
-        // }
+        int chunkThisFrame = 0;
+
+        while (chunkPosQueue.Count > 0 && chunkThisFrame < maxChunkPerFrame)
+        {
+            var chunkPos = chunkPosQueue.Dequeue();
+            chunkPos.chunk.InitChunk(chunkPos.pos, MapDataGenerator.Instance.resolution);
+            chunkThisFrame++;
+        }
     }
-    
+
     [Button]
     public void GenerateTerrain()
+    {
+        if (performanceMode)
+        {
+            GenerateTerrainFastMode();
+        }
+        else
+        {
+            GenerateTerrainTimerMode();
+        }
+        
+    }
+    
+    
+    public void GenerateTerrainFastMode()
+    {
+        ClearTerrain();
+            
+        for (int x = 0; x < terrainSize; x++)
+        {
+            for (int z = 0; z < terrainSize; z++)
+            {
+                Vector2 chunkCoord = new Vector2(x, z) + offset;
+                
+                var instantiatedChunk = Instantiate(chunkObject, terrainParent);
+                var chunk = instantiatedChunk.GetComponent<TerrainChunk>();
+                var chunkPos = new ChunkPos()
+                {
+                    pos = chunkCoord,
+                    chunk = chunk
+                };
+                chunkPosQueue.Enqueue(chunkPos);
+                
+                chunks.Add(chunk);
+            }
+        }
+    }
+    
+    public void GenerateTerrainTimerMode()
     {
         ClearTerrain();
         var watch = new Stopwatch();
@@ -64,7 +104,6 @@ public class FixedTerrain : MonoBehaviour
                 var chunk = instantiatedChunk.GetComponent<TerrainChunk>();
                 chunk.InitChunk(chunkCoord, MapDataGenerator.Instance.resolution);
                 chunks.Add(chunk);
-                // chunkLoadQueue.Enqueue(chunkPos);
             }
         }
         watch.Stop();
@@ -82,5 +121,6 @@ public class FixedTerrain : MonoBehaviour
         }
         
         chunks.Clear();
+        chunkPosQueue.Clear();
     }
 }

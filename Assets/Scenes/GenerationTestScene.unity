@@ -622,7 +622,7 @@ MonoBehaviour:
   debugBiome: {fileID: 11400000, guid: 50e5372f0736dc74a846576a48805391, type: 2}
   generationConfiguration: {fileID: 11400000, guid: f95d40b1b512fa1479d96e74feb94b3d, type: 2}
   curveSampleCount: 2048
-  resolution: 2
+  resolution: 1
 --- !u!4 &2127954276
 Transform:
   m_ObjectHideFlags: 0
@@ -663,11 +663,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 182d2df8c5ff4544808f7b65b17a59b1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  terrainSize: 1
+  terrainSize: 50
   terrainParent: {fileID: 1817684740}
   chunkObject: {fileID: 4480448243231049190, guid: 649b64edaf196d64b80094718a2edf9a, type: 3}
-  chunkResolution: 1
-  maxChunkPerFrame: 2
+  offset: {x: 0, y: 0}
+  performanceMode: 1
+  maxChunkPerFrame: 15
 --- !u!1 &2138677391
 GameObject:
   m_ObjectHideFlags: 0

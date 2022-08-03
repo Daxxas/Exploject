@@ -96,8 +96,8 @@ public class TerrainChunk : MonoBehaviour
 
         // Variables that will be filled & passed along jobs
         generatedMap = new NativeArray<float>(MapDataGenerator.chunkHeight * supportedChunkSize * supportedChunkSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-        biomesForTerrainChunk = BiomeGenerator.Instance.GetBiomesForTerrainChunk(coord);
-        biomesInChunk = BiomeGenerator.Instance.GetBiomesInChunk(coord);
+        biomesForTerrainChunk = BiomeGenerator.Instance.GetBiomesOfTerrainChunkForJob(coord, resolution);
+        biomesInChunk = BiomeGenerator.Instance.GetBiomesInChunk(coord, resolution);
         
         mapDataHandle = MapDataGenerator.Instance.GenerateMapData(position, generatedMap);
 
@@ -189,7 +189,7 @@ public class TerrainChunk : MonoBehaviour
     {
         triangles = new NativeQueue<Triangle>(Allocator.TempJob);
         uniqueVertices = new NativeParallelHashMap<Edge, float3>((MapDataGenerator.chunkHeight * supportedChunkSize * supportedChunkSize), Allocator.Persistent);
-        chunkTriangles = new NativeParallelHashMap<BiomeHolder, UnsafeList<int>>(2,Allocator.TempJob);
+        chunkTriangles = new NativeParallelHashMap<BiomeHolder, UnsafeList<int>>(biomesInChunk.Length,Allocator.TempJob);
         
         foreach (var biomeTriangles in chunkTriangles)
         {

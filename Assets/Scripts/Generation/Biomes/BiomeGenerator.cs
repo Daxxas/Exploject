@@ -28,41 +28,45 @@ public class BiomeGenerator : MonoBehaviour
         }
     }
 
-    public NativeArray<BiomeHolder> GetBiomesForTerrainChunk(Vector2 coord)
+    private BiomeHolder[] GetBiomesForChunk(Vector2 coord, int resolution)
     {
-        NativeArray<BiomeHolder> returnBiomes = new NativeArray<BiomeHolder>(MapDataGenerator.Instance.supportedChunkSize * MapDataGenerator.Instance.supportedChunkSize, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        BiomeHolder[] returnBiomes = new BiomeHolder[MapDataGenerator.Instance.supportedChunkSize * MapDataGenerator.Instance.supportedChunkSize];
 
         for (int x = 0; x < MapDataGenerator.Instance.supportedChunkSize; x++)
         {
             for (int z = 0; z < MapDataGenerator.Instance.supportedChunkSize; z++)
             {
                 int biomeIdx = x + MapDataGenerator.Instance.supportedChunkSize * z;
-
-                int2 pos = new int2((int)(x + coord.x * MapDataGenerator.Instance.supportedChunkSize), (int)(z + coord.y * MapDataGenerator.Instance.supportedChunkSize));
                 
+                int2 pos = new int2((int)((x - (resolution * 3 * coord.x)) + (coord.x * MapDataGenerator.Instance.supportedChunkSize) - resolution), 
+                                    (int)((z - (resolution * 3 * coord.y)) + (coord.y * MapDataGenerator.Instance.supportedChunkSize) - resolution));
+
                 returnBiomes[biomeIdx] = GetBiomeAtPos(pos).GetBiomeHolder();
             }
-        }
-        
+        } 
+
         return returnBiomes;
     }
+    
+    public NativeArray<BiomeHolder> GetBiomesOfTerrainChunkForJob(Vector2 coord, int resolution)
+    {
+        var biomeArray = GetBiomesForChunk(coord, resolution);
+        
+        NativeArray<BiomeHolder> returnArray = new NativeArray<BiomeHolder>(biomeArray.Length, Allocator.TempJob);
+        returnArray.CopyFrom(biomeArray);
+        
+        return returnArray;
+    }
 
-    public NativeList<BiomeHolder> GetBiomesInChunk(Vector2 coord)
+    public NativeList<BiomeHolder> GetBiomesInChunk(Vector2 coord, int resolution)
     {
         NativeList<BiomeHolder> returnBiomes = new NativeList<BiomeHolder>(Allocator.Persistent);
-
-        for (int x = 0; x < MapDataGenerator.Instance.supportedChunkSize; x++)
+        var biomeArray = GetBiomesForChunk(coord, resolution);
+        for (int i = 0; i < biomeArray.Length; i++)
         {
-            for (int z = 0; z < MapDataGenerator.Instance.supportedChunkSize; z++)
+            if (!returnBiomes.Contains(biomeArray[i]))
             {
-                int2 pos = new int2((int)(x + coord.x * MapDataGenerator.Instance.supportedChunkSize), (int)(z + coord.y * MapDataGenerator.Instance.supportedChunkSize));
-
-                BiomeHolder biomeAtPos = GetBiomeAtPos(pos).GetBiomeHolder();
-                
-                if (!returnBiomes.Contains(biomeAtPos))
-                {
-                    returnBiomes.Add(biomeAtPos);
-                }
+                returnBiomes.Add(biomeArray[i]);
             }
         }
         
@@ -77,6 +81,9 @@ public class BiomeGenerator : MonoBehaviour
     public Biome GetBiomeAtPos(int2 pos)
     {
         float yContinentalness = pipeline.GenerationConfiguration.yContinentalness.GetNoise(GenerationInfo.seed, pos.x, pos.y);
+        
+        // Debug.Log($"[BIOME] Sampling {pos.x}, {pos.y} = {yContinentalness}");
+
         if (yContinentalness > pipeline.landBiomeThreshold)
         {
             // return land biome

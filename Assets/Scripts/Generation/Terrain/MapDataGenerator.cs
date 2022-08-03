@@ -123,7 +123,10 @@ public class MapDataGenerator : MonoBehaviour
                 float yContinent = yContinentCurve.EvaluateLerp(yContinentalness.GetNoise(seed, x + (offsetx), z + (offsetz)));
                 float squashContinent = squashContinentCurve.EvaluateLerp(yContinentalness.GetNoise(seed, x + (offsetx), z + (offsetz)));
 
-                generatedMap[idx] = (-(y - yContinent) / squashContinent) + 1 + squashContinentalness.GetNoise(seed, x + (offsetx), y, z + (offsetz)); 
+                // Debug.Log($"[DATAJOB] Sampling {x + (offsetx)}, {z + (offsetz)} = {yContinentalness.GetNoise(seed, x + (offsetx), z + (offsetz))}");
+                
+                // generatedMap[idx] = (-(y - yContinent) / squashContinent) + 1 + squashContinentalness.GetNoise(seed, x + (offsetx), y, z + (offsetz)); 
+                generatedMap[idx] = (-y / yContinent) + 1; //+ squashContinentalness.GetNoise(seed, x + (offsetx), y, z + (offsetz)); 
             }
             else
             {
