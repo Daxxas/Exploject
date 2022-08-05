@@ -1,3 +1,4 @@
+using System;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
@@ -21,4 +22,14 @@ public class GenerationConfiguration : ScriptableObject
     
     [HideInInspector] public AnimationCurve yContinentCurve = new AnimationCurve();
     public SampledNoiseCurve sampledyContinentCurve;
+
+    private void OnValidate()
+    {
+        yContinentalness.UpdateFractalBounding();
+        yPeaksValleys.UpdateFractalBounding();
+        squashContinentalness.UpdateFractalBounding();
+        squashPeaksValleys.UpdateFractalBounding();
+        humidity.UpdateFractalBounding();
+        temperature.UpdateFractalBounding();
+    }
 }
