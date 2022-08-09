@@ -12,10 +12,61 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67dc506164304cfebb1c1418aae4cd7e, type: 3}
   m_Name: Plain
   m_EditorClassIdentifier: 
-  isSelf: 0
   id: PLAIN
   color: {r: 0.078431375, g: 0.9607844, b: 0.16470589, a: 1}
   biomeMaterial: {fileID: 2100000, guid: 8ec157d12f52345409ad7dee286b967a, type: 2}
-  serializedTags:
-  - PLAIN
-  - LAND
+  features:
+  - feature: {fileID: 6149868613736674758, guid: d5a56c692aa62f940b7143e26cd75980, type: 3}
+    density: 50
+    minHeight: 0
+    maxHeight: 230
+    step: 1
+    distribution:
+      mFrequency: 1
+      mSalt: 0
+      mNoiseType: 7
+      mRotationType3D: 0
+      mTransformType3D: 0
+      mFractalType: 1
+      mOctaves: 2
+      mLacunarity: 0.5
+      mGain: 0.5
+      mWeightedStrength: 0
+      mPingPongStength: 0
+      mFractalBounding: 0.6666667
+      mCellularDistanceFunction: 0
+      mCellularReturnType: 0
+      mCellularJitterModifier: 0
+      mDomainWarpType: 0
+      mWarpTransformType3D: 0
+      mDomainWarpAmp: 0
+      mGridWidth: 10
+      mGridCellWidth: 12
+      mGridStep: 1
+  - feature: {fileID: 1187102002385758528, guid: 5079d986313fb994b9b1b05919eaef66, type: 3}
+    density: 50
+    minHeight: 0
+    maxHeight: 230
+    step: 1
+    distribution:
+      mFrequency: 1
+      mSalt: 45764
+      mNoiseType: 7
+      mRotationType3D: 0
+      mTransformType3D: 0
+      mFractalType: 1
+      mOctaves: 2
+      mLacunarity: 0.5
+      mGain: 0.5
+      mWeightedStrength: 0
+      mPingPongStength: 0
+      mFractalBounding: 0.6666667
+      mCellularDistanceFunction: 0
+      mCellularReturnType: 0
+      mCellularJitterModifier: 0
+      mDomainWarpType: 0
+      mWarpTransformType3D: 0
+      mDomainWarpAmp: 0
+      mGridWidth: 10
+      mGridCellWidth: 12
+      mGridStep: 1

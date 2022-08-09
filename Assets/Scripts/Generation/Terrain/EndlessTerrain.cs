@@ -92,7 +92,7 @@ public class EndlessTerrain : MonoBehaviour
             int i = 0;
             while(i < maxChunksPerFrame)
             {
-                currentChunkPos.chunk.InitChunk(currentChunkPos.pos, MapDataGenerator.Instance.resolution);
+                currentChunkPos.chunk.InitChunk(currentChunkPos.pos, MapDataGenerator.resolution);
                 i++;
             }
         }

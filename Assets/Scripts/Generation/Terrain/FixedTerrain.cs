@@ -34,7 +34,7 @@ public class FixedTerrain : MonoBehaviour
 
     private void Start()
     {
-        GenerateTerrain();
+        // GenerateTerrain();
     }
 
     private void Update()
@@ -44,7 +44,7 @@ public class FixedTerrain : MonoBehaviour
         while (chunkPosQueue.Count > 0 && chunkThisFrame < maxChunkPerFrame)
         {
             var chunkPos = chunkPosQueue.Dequeue();
-            chunkPos.chunk.InitChunk(chunkPos.pos, MapDataGenerator.Instance.resolution);
+            chunkPos.chunk.InitChunk(chunkPos.pos, MapDataGenerator.resolution);
             chunkThisFrame++;
         }
     }
@@ -102,7 +102,7 @@ public class FixedTerrain : MonoBehaviour
                 
                 var instantiatedChunk = Instantiate(chunkObject, terrainParent);
                 var chunk = instantiatedChunk.GetComponent<TerrainChunk>();
-                chunk.InitChunk(chunkCoord, MapDataGenerator.Instance.resolution);
+                chunk.InitChunk(chunkCoord, MapDataGenerator.resolution);
                 chunks.Add(chunk);
             }
         }

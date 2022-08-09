@@ -1,7 +1,10 @@
 using System;
+using AOT;
 using Sirenix.OdinInspector;
+using Unity.Burst;
 using UnityEngine;
 
+[BurstCompile(CompileSynchronously = true)]
 [CreateAssetMenu(fileName = "New Source Noise Config", menuName = "Biomes/Source Noise Config", order = 0)]
 public class GenerationConfiguration : ScriptableObject
 {
@@ -22,7 +25,8 @@ public class GenerationConfiguration : ScriptableObject
     
     [HideInInspector] public AnimationCurve yContinentCurve = new AnimationCurve();
     public SampledNoiseCurve sampledyContinentCurve;
-
+    
+    
     private void OnValidate()
     {
         yContinentalness.UpdateFractalBounding();

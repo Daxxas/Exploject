@@ -50,10 +50,13 @@
 using System;
 using System.Runtime.CompilerServices;
 using Unity.Burst;
+using Unity.Mathematics;
 using UnityEngine;
 
 // Switch between using floats or doubles for input position
 using FNLfloat = System.Single;
+using Random = Unity.Mathematics.Random;
+
 //using FNLfloat = System.Double;
 
 [Serializable]
@@ -71,6 +74,7 @@ public struct FastNoiseLite
         ValueCubic,
         Value,
         WhiteNoise,
+        PaddedGrid,
         Constant
     };
 
@@ -126,6 +130,7 @@ public struct FastNoiseLite
     };
 
     public float mFrequency;
+    public int mSalt;
     public NoiseType mNoiseType;
     public RotationType3D mRotationType3D;
     public TransformType3D mTransformType3D;
@@ -146,39 +151,11 @@ public struct FastNoiseLite
     public DomainWarpType mDomainWarpType;
     public TransformType3D mWarpTransformType3D;
     public float mDomainWarpAmp;
-
-    /// <summary>
-    /// Create new FastNoise object with optional seed
-    /// </summary>
-    // public FastNoiseLite(int seed)
-    // {
-    //     mSeed = seed;
-    //     mFrequency = 0.01f;
-    //     mNoiseType = NoiseType.OpenSimplex2;
-    //     mRotationType3D = RotationType3D.None;
-    //     mTransformType3D = TransformType3D.None;
-    //     mFractalType = FractalType.None;
-    //     mOctaves = 3;
-    //     mLacunarity = 2.0f;
-    //     mGain = 0.5f;
-    //     mWeightedStrength = 0.0f;
-    //     mPingPongStength = 2.0f;
-    //     mFractalBounding = 1 / 1.75f;
-    //     mCellularDistanceFunction = CellularDistanceFunction.EuclideanSq;
-    //     mCellularReturnType = CellularReturnType.Distance;
-    //     mCellularJitterModifier = 1.0f;
-    //     mDomainWarpType = DomainWarpType.OpenSimplex2;
-    //     mWarpTransformType3D = TransformType3D.DefaultOpenSimplex2;
-    //     mDomainWarpAmp = 1.0f;
-    // }
     
-    /// <summary>
-    /// Sets seed used for all noise types
-    /// </summary>
-    /// <remarks>
-    /// Default: 1337
-    /// </remarks>
-    // public void SetSeed(int seed) { mSeed = seed; }
+    // Padded grid options
+    public float mGridWidth;
+    public float mGridCellWidth;
+    public float mGridStep;
 
     /// <summary>
     /// Sets frequency for all noise types
@@ -321,6 +298,12 @@ public struct FastNoiseLite
     public void SetDomainWarpAmp(float domainWarpAmp) { mDomainWarpAmp = domainWarpAmp; }
 
 
+    public void SetGrid(float width, float padding)
+    {
+        mGridWidth = width;
+        mGridCellWidth = width + padding;
+    }
+    
     /// <summary>
     /// 2D noise at given position using current settings
     /// </summary>
@@ -736,10 +719,8 @@ public struct FastNoiseLite
         yo = value * ygo;
         zo = value * zgo;
     }
-
-
+    
     // Generic noise gen
-
     private readonly float GenNoiseSingle(int seed, FNLfloat x, FNLfloat y)
     {
         switch (mNoiseType)
@@ -758,6 +739,8 @@ public struct FastNoiseLite
                 return SingleValue(seed, x, y);
             case NoiseType.WhiteNoise:
                 return SingleWhiteNoise(seed, x, y);
+            case NoiseType.PaddedGrid:
+                return SinglePaddedGridNoise(seed, x, y);
             case NoiseType.Constant:
                 return 1;
             default:
@@ -2026,10 +2009,45 @@ public struct FastNoiseLite
             zs) * (1 / (1.5f * 1.5f * 1.5f));
     }
 
+    private readonly float SinglePaddedGridNoise(int seed, FNLfloat x, FNLfloat y)
+    {
+        // Round position to nearest step
+        float roundedx = FastRound(x / mGridStep) * mGridStep;
+        float roundedy = FastRound(y / mGridStep) * mGridStep;
+
+        // Debug.Log($"input position : {x}, {y} rounded to {roundedx}, {roundedy}");
+
+        // Get cell corresponding to position        
+        float cellX = FastFloor(roundedx / mGridCellWidth) * mGridCellWidth;
+        float cellY = FastFloor(roundedy / mGridCellWidth) * mGridCellWidth;
+        
+        // Debug.Log($"rounded pos : {roundedx}, {roundedy} is in cell {cellX}, {cellY}" );
+
+        // Randomize
+        float randomCoefX = (SingleWhiteNoise(seed + mSalt, x, y) + 1) / 2;
+        int ySalt = 456;
+        float randomCoefY = (SingleWhiteNoise(seed + mSalt + ySalt, x, y) + 1) / 2;
+        
+        // Get the point of the cell grid
+        float cellpointx = (FastRound((mGridWidth * randomCoefX) / mGridStep) * mGridStep) + cellX;
+        float cellpointy = (FastRound((mGridWidth * randomCoefY) / mGridStep) * mGridStep) + cellY;
+        
+        // Debug.Log($"correct pos in cell {cellX}, {cellY} is {cellpointx}, {cellpointy}, is correct pos ? {(roundedx == cellpointx && roundedy == cellpointy)}" );
+        
+        // return 1 if point given is point of cell grid
+        return (roundedx == cellpointx && roundedy == cellpointy) ? 1 : -1;
+    }
+
     // White noise
     private readonly float SingleWhiteNoise(int seed, FNLfloat x, FNLfloat y)
     {
-        return ValCoord(seed,FastFloor(x),FastFloor(y));
+        int x0 = FastFloor(x);
+        int y0 = FastFloor(y);
+
+        x0 *= PrimeX;
+        y0 *= PrimeY;
+        
+        return ValCoord(seed,FastFloor(x0),FastFloor(y0));
     } 
     
     // Value Noise

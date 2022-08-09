@@ -1,48 +1,117 @@
+using System;
+using System.Reflection;
 using Unity.Mathematics;
+using Unity.Properties;
 using UnityEditor;
+using UnityEditor.Graphs;
+using UnityEditor.UIElements;
 using UnityEngine;
+using Object = UnityEngine.Object;
+using Random = UnityEngine.Random;
 
-[CustomPropertyDrawer(typeof(FastNoiseLite))]
-public class FastNoiseLiteEditor : PropertyDrawer
+
+public class FastNoiseLiteWindow : EditorWindow
 {
-    private float previewSize = 300f;
+    private static float previewSize = 300f;
+    private static float windowHeight = 500f;
     private int previewResolution = 128;
-    
-    public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+    [SerializeField] private FastNoiseLite noise;
+    SerializedProperty noiseProperty;
+
+    [MenuItem("FastNoiseLite/FastNoiseLite Preview")]
+    public static void ShowWindow()
     {
-        EditorGUI.PropertyField(position, property, label, true);
+        // Get existing open window or if none, make a new one:
+        FastNoiseLiteWindow window = (FastNoiseLiteWindow)EditorWindow.GetWindow(typeof(FastNoiseLiteWindow));
+        window.maxSize = new Vector2(previewSize, windowHeight);
+        window.minSize = window.maxSize;
 
-        FastNoiseLite noise = (FastNoiseLite) fieldInfo.GetValue(property.serializedObject.targetObject);
+        GetWindow<FastNoiseLiteWindow>(false, "FastNoiseLite Preview", true);
         
-        if (property.isExpanded)
-        {
-            Texture2D noisePreview = new Texture2D(previewResolution, previewResolution);
-            noisePreview.filterMode = FilterMode.Point;
-
-            for (int x = 0; x < previewResolution; x++)
-            {
-                for (int z = 0; z < previewResolution; z++)
-                {
-                    float val = noise.GetNoise(1, x, z);
-                    float transformedVal = (val + 1) / 2;
-            
-                    Color color = new Color(transformedVal, transformedVal, transformedVal);
-                    
-                    noisePreview.SetPixel(x,z,color);
-                }            
-            }
-            
-            noisePreview.Apply();
-            GUIStyle style = new GUIStyle();
-            style.normal.background = noisePreview;
-            EditorGUI.LabelField(new Rect(((position.xMax + position.xMin - previewSize) / 2), position.yMax - previewSize, previewSize, previewSize), GUIContent.none, style);
-        }
     }
     
-    public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+    void OnGUI()
     {
-        if (property.isExpanded)
-            return EditorGUI.GetPropertyHeight(property) + previewSize + 10f;
-        return EditorGUI.GetPropertyHeight(property);
+        
+        
+        if (Selection.activeObject == null)
+        {
+            return;
+        }
+        
+        
+        noiseProperty = new SerializedObject(Selection.activeObject).GetIterator();
+
+        while (noiseProperty.Next(true))
+        {
+            if (EditorHelper.GetTargetObjectOfProperty(noiseProperty) is FastNoiseLite)
+            {
+                break;
+            }
+        }
+
+        noise = (FastNoiseLite) EditorHelper.GetTargetObjectOfProperty(noiseProperty);
+        
+        Texture2D noisePreview = new Texture2D(previewResolution, previewResolution);
+        noisePreview.filterMode = FilterMode.Point;
+
+        float maxValue = -1;
+        float minValue = 1;
+        float mean = 0;
+
+        int valCount = 0;
+        
+        for (int x = 0; x < noisePreview.width; x++)
+        {
+            for (int z = 0; z < noisePreview.height; z++)
+            {
+                float val = noise.GetNoise(1, x, z);
+
+                if (val > maxValue)
+                {
+                    maxValue = val;
+                }
+
+                if (val < minValue)
+                {
+                    minValue = val;
+                }
+                
+                
+                mean += val;
+                
+                float transformedVal = (val + 1) / 2;
+                Color color = new Color(transformedVal, transformedVal, transformedVal);
+
+                if (val > testThreshold)
+                {
+                    color = Color.green;
+                    valCount++;
+                }
+                
+                noisePreview.SetPixel(x, z, color);
+            }
+        }
+        mean /= noisePreview.width * noisePreview.height;
+
+        noisePreview.Apply();
+        GUIStyle style = new GUIStyle();
+        style.normal.background = noisePreview;
+
+        EditorGUI.LabelField(new Rect((position.width - previewSize) / 2, (position.height - previewSize), previewSize, previewSize), GUIContent.none, style);
+        EditorGUILayout.FloatField("Max value", maxValue);
+        EditorGUILayout.FloatField("Min value", minValue);
+        EditorGUILayout.FloatField("Mean", mean);
+        testThreshold = EditorGUILayout.Slider("Threshold", testThreshold, -1f, 1f);
+        float value = ((float)valCount) / (noisePreview.width * noisePreview.height);
+        Debug.Log($"{valCount} / {(noisePreview.width * noisePreview.height)} = {value}");
+        EditorGUILayout.FloatField("%", value);
+    }
+    
+    float testThreshold = 0f;
+    
+    void OnInspectorUpdate()
+    {
+        Repaint();
     }
 }

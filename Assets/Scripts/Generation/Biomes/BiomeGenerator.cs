@@ -30,16 +30,16 @@ public class BiomeGenerator : MonoBehaviour
 
     private BiomeHolder[] GetBiomesForChunk(Vector2 coord, int resolution)
     {
-        BiomeHolder[] returnBiomes = new BiomeHolder[MapDataGenerator.Instance.supportedChunkSize * MapDataGenerator.Instance.supportedChunkSize];
+        BiomeHolder[] returnBiomes = new BiomeHolder[MapDataGenerator.SupportedChunkSize * MapDataGenerator.SupportedChunkSize];
 
-        for (int x = 0; x < MapDataGenerator.Instance.supportedChunkSize; x++)
+        for (int x = 0; x < MapDataGenerator.SupportedChunkSize; x++)
         {
-            for (int z = 0; z < MapDataGenerator.Instance.supportedChunkSize; z++)
+            for (int z = 0; z < MapDataGenerator.SupportedChunkSize; z++)
             {
-                int biomeIdx = x + MapDataGenerator.Instance.supportedChunkSize * z;
+                int biomeIdx = x + MapDataGenerator.SupportedChunkSize * z;
                 
-                int2 pos = new int2((int)((x - (resolution * 3 * coord.x)) + (coord.x * MapDataGenerator.Instance.supportedChunkSize) - resolution), 
-                                    (int)((z - (resolution * 3 * coord.y)) + (coord.y * MapDataGenerator.Instance.supportedChunkSize) - resolution));
+                int2 pos = new int2((int)((x - (resolution * 3 * coord.x)) + (coord.x * MapDataGenerator.SupportedChunkSize) - resolution), 
+                                    (int)((z - (resolution * 3 * coord.y)) + (coord.y * MapDataGenerator.SupportedChunkSize) - resolution));
 
                 returnBiomes[biomeIdx] = GetBiomeAtPos(pos).GetBiomeHolder();
             }

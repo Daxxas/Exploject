@@ -18,4 +18,10 @@ public static class GenerationInfo
         r.InitState();
         return r.NextInt();
     }
+
+    public readonly static FastNoiseLite FeatureRotationNoise = new FastNoiseLite()
+    {
+        mNoiseType = FastNoiseLite.NoiseType.WhiteNoise,
+        mFrequency = 100f
+    }; 
 }

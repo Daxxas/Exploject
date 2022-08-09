@@ -11,55 +11,48 @@ using UnityEngine;
 
 
 [CreateAssetMenu(fileName = "New Biome", menuName = "Biomes/Biome", order = 1)]
-public class Biome : ScriptableObject, ISerializationCallbackReceiver
+public class Biome : ScriptableObject
 {
-    public bool isSelf = false;
     
-    [HideIf("isSelf")] [SerializeField]
+    [SerializeField]
     private string id;
     public string Id => id;
     
-    [HideIf("isSelf")] 
     public Color color;
 
     public Material biomeMaterial;
-    
-    [HideIf("isSelf")]
-    [SerializeField] private List<string> serializedTags = new List<string>();
-    public HashSet<string> tags = new HashSet<string>();
+    [SerializeField] [NonReorderable] public BiomeFeature[] features;
 
-    
-    
     public BiomeHolder GetBiomeHolder()
     {
         return new BiomeHolder( new FixedString32Bytes(id), new float3(color.r, color.g, color.b));;
-    }
-    
-    public void OnBeforeSerialize()
-    {
-        tags = new HashSet<string> (serializedTags);
-        tags.Add(Id);
-
-        foreach (var val in tags) {
-            if (!serializedTags.Contains (val)) {
-                serializedTags.Add (val);
-            }
-        } 
-    }
-
-    public void OnAfterDeserialize()
-    {
-        tags.Clear();
-
-        foreach (var val in serializedTags) {
-            tags.Add (val);
-        }
     }
 
     public override string ToString()
     {
         return $"{Id}";
     }
+    
+    public void OnValidate()
+    {
+        if(features == null) return;
+        
+        for (int i = 0; i < features.Length; i++)
+        {
+            features[i].distribution.UpdateFractalBounding();
+        }
+    }
+}
+
+[Serializable]
+public struct BiomeFeature
+{
+    [SerializeField] public GameObject feature;
+    [SerializeField] public float density;
+    [SerializeField] public float minHeight;
+    [SerializeField] public float maxHeight;
+    [SerializeField] public float step;
+    [SerializeField] public FastNoiseLite distribution;
 }
 
 [BurstCompile(CompileSynchronously = true)]

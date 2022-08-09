@@ -9,8 +9,6 @@ using UnityEngine;
 
 public class MapDataGenerator : MonoBehaviour
 {
-    [SerializeField] private Biome debugBiome;
-    
     private static MapDataGenerator instance;
     public static MapDataGenerator Instance => instance;
 
@@ -18,12 +16,12 @@ public class MapDataGenerator : MonoBehaviour
     public GenerationConfiguration GenerationConfiguration => generationConfiguration;
 
     [SerializeField] private int curveSampleCount = 512;
-    [SerializeField] private const int chunkSize = 16;
-    [SerializeField] public const int chunkHeight = 230;
-    [SerializeField] public const float threshold = 0;
-    [SerializeField] public int resolution = 2;
+    private const int chunkSize = 16;
+    public const int chunkHeight = 230;
+    public const float threshold = 0;
+    public const int resolution = 2;
     public static int ChunkSize => chunkSize;
-    public int supportedChunkSize => ChunkSize + resolution * 3;
+    public static int SupportedChunkSize => ChunkSize + resolution * 3;
     
     // Chunk representation 
     // 0   1   2   3   4   5   6   7   8   9  10  12  13  14  15  16  17  18
@@ -79,7 +77,7 @@ public class MapDataGenerator : MonoBehaviour
         
         return mapDataHandle;
     }
-    
+
     // First job to be called from CreateChunk to generate MapData 
     [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)] 
     public struct MapDataJob : IJobParallelFor
@@ -112,26 +110,34 @@ public class MapDataGenerator : MonoBehaviour
         
         public void Execute(int idx)
         {
-            int x = idx % supportedChunkSize;
-            int y = (idx / supportedChunkSize) % chunkHeight;
-            int z = idx / (supportedChunkSize * chunkHeight);
+            int3 xyz = to3D(idx, supportedChunkSize, chunkHeight);
 
-            if (x % resolution == 0 && y % resolution == 0 && z % resolution == 0)
+            if (xyz.x % resolution == 0 && xyz.y % resolution == 0 && xyz.z % resolution == 0)
             {
                 // Since it's a IJobParallelFor, job is called for every idx, filling the generatedMap in parallel
                 // generatedMap[idx] = functionPointers[biomeIdx].Invoke(seed, x + (offsetx), y, z + (offsetz));
-                float yContinent = yContinentCurve.EvaluateLerp(yContinentalness.GetNoise(seed, x + (offsetx), z + (offsetz)));
-                float squashContinent = squashContinentCurve.EvaluateLerp(yContinentalness.GetNoise(seed, x + (offsetx), z + (offsetz)));
+                float yContinent = yContinentCurve.EvaluateLerp(yContinentalness.GetNoise(seed, xyz.x + (offsetx), xyz.z + (offsetz)));
+                float squashContinent = squashContinentCurve.EvaluateLerp(yContinentalness.GetNoise(seed, xyz.x + (offsetx), xyz.z + (offsetz)));
 
                 // Debug.Log($"[DATAJOB] Sampling {x + (offsetx)}, {z + (offsetz)} = {yContinentalness.GetNoise(seed, x + (offsetx), z + (offsetz))}");
                 
                 // generatedMap[idx] = (-(y - yContinent) / squashContinent) + 1 + squashContinentalness.GetNoise(seed, x + (offsetx), y, z + (offsetz)); 
-                generatedMap[idx] = (-y / yContinent) + 1; //+ squashContinentalness.GetNoise(seed, x + (offsetx), y, z + (offsetz)); 
+                generatedMap[idx] = (-xyz.y / yContinent) + 1; //+ squashContinentalness.GetNoise(seed, x + (offsetx), y, z + (offsetz)); 
             }
             else
             {
-                generatedMap[idx] = math.NAN;
+                generatedMap[idx] = 0f;
             }
+        }
+        
+        public static int3 to3D(int i, int chunkSize, int chunkHeight)
+        {
+            int3 xyz = new int3();
+            xyz.x = i % chunkSize;
+            xyz.y = (i / chunkSize) % chunkHeight;
+            xyz.z = i / (chunkSize * chunkHeight);
+
+            return xyz;
         }
     }
 }

@@ -1,9 +1,7 @@
 using System;
 using System.Collections;
-using System.Linq;
 using System.Numerics;
 using TMPro;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
@@ -241,10 +239,8 @@ public class TerrainChunk : MonoBehaviour
         triangles.Dispose(chunkMeshHandle);
         uniqueVertices.Dispose(chunkMeshHandle);
         generatedMap.Dispose(chunkMeshHandle);
-        biomesInChunk.Dispose(chunkMeshHandle);
-        biomesForTerrainChunk.Dispose(marchHandle);
 
-        StartCoroutine(ApplyMeshData(mesh, chunkVertices, chunkNormals, chunkTriangles, chunkMeshHandle));
+        StartCoroutine(ApplyMeshData(mesh, chunkVertices, chunkNormals, chunkTriangles, biomesInChunk, biomesForTerrainChunk, chunkMeshHandle));
 
         return chunkMeshHandle;
     }
@@ -252,7 +248,7 @@ public class TerrainChunk : MonoBehaviour
     /// <summary>
     /// Apply mesh data from ChunkMeshJob on chunk mesh
     /// </summary>
-    private IEnumerator ApplyMeshData(Mesh mesh, NativeList<Vector3> verts, NativeList<Vector3> normals, NativeParallelHashMap<BiomeHolder, UnsafeList<int>> chunkTriangles, JobHandle job)
+    private IEnumerator ApplyMeshData(Mesh mesh, NativeList<Vector3> verts, NativeList<Vector3> normals, NativeParallelHashMap<BiomeHolder, UnsafeList<int>> chunkTriangles, NativeList<BiomeHolder> biomesInChunk, NativeArray<BiomeHolder> biomesForTerrainChunk, JobHandle job)
     {
         yield return new WaitUntil(() => job.IsCompleted);
         job.Complete();
@@ -266,6 +262,8 @@ public class TerrainChunk : MonoBehaviour
                 biomeTriangles.Value.Dispose();
             }
             chunkTriangles.Dispose();
+            biomesInChunk.Dispose(chunkMeshHandle);
+            biomesForTerrainChunk.Dispose(marchHandle);
             safeToRemove = true;
             DestroyChunk();
         }
@@ -292,7 +290,9 @@ public class TerrainChunk : MonoBehaviour
                 NativeArray<int> biomeTrianglesArray = GetTrianglesFromUnsafeList(biomeTriangles.Value);
                 mesh.SetTriangles(biomeTrianglesArray.ToArray(), biomeCount);
                 biomeCount++;
-                biomeTrianglesArray.Dispose();
+                
+                // IsCreated check in case of empty chunk
+                if(biomeTrianglesArray.IsCreated) biomeTrianglesArray.Dispose();
             }
 
             mesh.bounds = new Bounds(new Vector3(((float) MapDataGenerator.ChunkSize) / 2, ((float) MapDataGenerator.chunkHeight)  / 2, ((float) MapDataGenerator.ChunkSize) / 2), 
@@ -320,7 +320,103 @@ public class TerrainChunk : MonoBehaviour
             }
             chunkTriangles.Dispose(colliderJobHandle);
             safeToRemove = true;
+            
+            StartCoroutine(ApplyFeatures(biomesInChunk, biomesForTerrainChunk, colliderJobHandle));
         }
+    }
+
+    public IEnumerator ApplyFeatures(NativeList<BiomeHolder> biomesInChunk, NativeArray<BiomeHolder> biomesForTerrainChunk, JobHandle colliderHandle)
+    {
+        yield return new WaitUntil(() => colliderHandle.IsCompleted);
+        colliderHandle.Complete();
+
+        GenerateChunkFeatures(biomesInChunk, biomesForTerrainChunk);
+        
+        biomesInChunk.Dispose(chunkMeshHandle);
+        biomesForTerrainChunk.Dispose(marchHandle);
+    } 
+    
+    public void GenerateChunkFeatures(NativeList<BiomeHolder> biomesInChunk, NativeArray<BiomeHolder> biomesForTerrainChunk)
+    {
+        Transform parent = new GameObject("Features").transform;
+        
+        parent.parent = transform;
+        
+        foreach (var biomeHolder in biomesInChunk)
+        {
+            Biome biome = BiomeGenerator.Instance.GetBiomeFromId(biomeHolder.id);
+            
+            foreach (var feature in biome.features) 
+            {
+                if(feature.step == 0)
+                {
+                    continue;
+                }
+                
+                for (float x = 0; x < MapDataGenerator.ChunkSize+1; x+=feature.step)
+                {
+                    for (float z = 0; z < MapDataGenerator.ChunkSize+1; z+=feature.step)
+                    {
+                        // Get biome at feature position
+                        int biomeX = (int) math.floor(x) + resolution;
+                        int biomeZ = (int) math.floor(z) + resolution;
+                
+                        int biomeIdx = (biomeX - 1) + MapDataGenerator.SupportedChunkSize * (biomeZ - 1);
+        
+                        BiomeHolder biomeAtPos = biomesForTerrainChunk[biomeIdx];
+                        if(!biomeAtPos.Equals(biomeHolder)) continue;
+                        
+                        // We are in correct biome to place feature
+                        
+                        // Test if we can raycast 
+                        float worldPosX = x + chunkPos.x * MapDataGenerator.ChunkSize;
+                        float worldPosZ = z + chunkPos.y * MapDataGenerator.ChunkSize;
+                        
+                        if (feature.distribution.GetNoise(GenerationInfo.seed, worldPosX, worldPosZ) > 0)
+                        {
+                            // Get position of feature with a raycast
+                            Vector3 raycastOrigin = new Vector3(worldPosX, feature.maxHeight, worldPosZ);
+
+                            float maxDistance = feature.maxHeight - feature.minHeight;
+                            Physics.Raycast(raycastOrigin, Vector3.down, out RaycastHit hit, maxDistance); // TODO : Add layermask
+                            if (hit.collider != null)
+                            {
+                                // We hit something, place feature
+                                float featureRotation = GenerationInfo.FeatureRotationNoise.GetNoise(GenerationInfo.seed, worldPosX, worldPosZ);
+                                featureRotation = (featureRotation + 1) / 2;
+                                featureRotation *= 360;
+                                
+                                GameObject featureObject = Instantiate(feature.feature, hit.point, UnityEngine.Quaternion.Euler(0, featureRotation, 0));
+                                featureObject.transform.parent = parent;
+                            }
+                        }
+                        
+                    }
+                }
+            }
+        }
+        //
+        // for (int x = 0; x < MapDataGenerator.ChunkSize+1; x++)
+        // {
+        //     for (int z = 0; z < MapDataGenerator.ChunkSize+1; z++)
+        //     {
+        //         int biomeX = x + resolution;
+        //         int biomeZ = z + resolution;
+        //         
+        //         int biomeIdx = (biomeX - 1) + MapDataGenerator.SupportedChunkSize * (biomeZ - 1);
+        //
+        //         BiomeHolder biomeAtPos = biomesForTerrainChunk[biomeIdx];   
+        //         
+        //         int2 pos = new int2((int)((biomeX - (resolution * 3 * chunkPos.x)) + (chunkPos.x * MapDataGenerator.SupportedChunkSize) - resolution), 
+        //             (int)((biomeZ - (resolution * 3 * chunkPos.y)) + (chunkPos.y * MapDataGenerator.SupportedChunkSize) - resolution));
+        //
+        //         GameObject s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        //         s.transform.parent = parent;
+        //         s.transform.position = new Vector3(pos.x, 30, pos.y);
+        //         s.transform.localScale = Vector3.one * 0.25f;
+        //         s.GetComponent<MeshRenderer>().material.color = new Color(biomeAtPos.color.x, biomeAtPos.color.y, biomeAtPos.color.z);
+        //     }
+        // } 
     }
 
     private unsafe NativeArray<int> GetTrianglesFromUnsafeList(UnsafeList<int> inputList)
