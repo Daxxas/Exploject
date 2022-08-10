@@ -375,7 +375,6 @@ public class TerrainChunk : MonoBehaviour
                         {
                             // Get position of feature with a raycast
                             Vector3 raycastOrigin = new Vector3(worldPosX, feature.maxHeight, worldPosZ);
-
                             float maxDistance = feature.maxHeight - feature.minHeight;
                             
                             Physics.Raycast(
@@ -388,12 +387,7 @@ public class TerrainChunk : MonoBehaviour
                             if (hit.collider != null)
                             {
                                 // We hit something, place feature
-                                float featureRotation = GenerationInfo.FeatureRotationNoise.GetNoise(GenerationInfo.seed, worldPosX, worldPosZ);
-                                featureRotation = (featureRotation + 1) / 2;
-                                featureRotation *= 360;
-                                
-                                GameObject featureObject = Instantiate(feature.feature, hit.point, UnityEngine.Quaternion.Euler(0, featureRotation, 0));
-                                featureObject.transform.parent = parent;
+                                feature.GenerateFeature(parent, hit.point);
                             }
                         }
                         

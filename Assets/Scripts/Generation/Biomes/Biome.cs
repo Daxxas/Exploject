@@ -52,7 +52,18 @@ public struct BiomeFeature
     [SerializeField] public float minHeight;
     [SerializeField] public float maxHeight;
     [SerializeField] public float step;
+    [SerializeField] public Vector3 spawnOffset;
     [SerializeField] public FastNoiseLite distribution;
+
+    public void GenerateFeature(Transform parent, Vector3 spawnPosition)
+    {
+        float featureRotation = GenerationInfo.FeatureRotationNoise.GetNoise(GenerationInfo.seed, spawnPosition.x, spawnPosition.z);
+        featureRotation = (featureRotation + 1) / 2;
+        featureRotation *= 360;
+                                
+        GameObject featureObject = GameObject.Instantiate(feature, spawnPosition + spawnOffset, Quaternion.Euler(0, featureRotation, 0));
+        featureObject.transform.parent = parent;
+    }
 }
 
 [BurstCompile(CompileSynchronously = true)]
