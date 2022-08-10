@@ -67,6 +67,8 @@ public class FixedTerrain : MonoBehaviour
     public void GenerateTerrainFastMode()
     {
         ClearTerrain();
+        var watch = new Stopwatch();
+        watch.Start();
             
         for (int x = 0; x < terrainSize; x++)
         {
@@ -86,6 +88,12 @@ public class FixedTerrain : MonoBehaviour
                 chunks.Add(chunk);
             }
         }
+        
+        watch.Stop();
+
+        float miliseconds =  watch.ElapsedMilliseconds / 1000f;
+        
+        Debug.Log( $"Generated {terrainSize * terrainSize} chunks in " + miliseconds + " seconds");
     }
     
     public void GenerateTerrainTimerMode()

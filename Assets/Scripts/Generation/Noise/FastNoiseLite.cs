@@ -154,8 +154,9 @@ public struct FastNoiseLite
     
     // Padded grid options
     public float mGridWidth;
-    public float mGridCellWidth;
+    public float mGridPadding;
     public float mGridStep;
+    float mGridCellWidth => mGridPadding + mGridWidth;
 
     /// <summary>
     /// Sets frequency for all noise types
@@ -301,7 +302,7 @@ public struct FastNoiseLite
     public void SetGrid(float width, float padding)
     {
         mGridWidth = width;
-        mGridCellWidth = width + padding;
+        mGridPadding = padding;
     }
     
     /// <summary>

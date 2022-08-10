@@ -353,9 +353,9 @@ public class TerrainChunk : MonoBehaviour
                     continue;
                 }
                 
-                for (float x = 0; x < MapDataGenerator.ChunkSize+1; x+=feature.step)
+                for (float x = 0; x < MapDataGenerator.ChunkSize; x+=feature.step)
                 {
-                    for (float z = 0; z < MapDataGenerator.ChunkSize+1; z+=feature.step)
+                    for (float z = 0; z < MapDataGenerator.ChunkSize; z+=feature.step)
                     {
                         // Get biome at feature position
                         int biomeX = (int) math.floor(x) + resolution;

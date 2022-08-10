@@ -334,8 +334,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1105158732}
-  m_LocalRotation: {x: -0.14704105, y: 0.30834264, z: -0.048306208, w: -0.9386002}
-  m_LocalPosition: {x: 587.2889, y: 99.61594, z: 40.835236}
+  m_LocalRotation: {x: 0.04085581, y: 0.39058536, z: -0.017338932, w: 0.9194962}
+  m_LocalPosition: {x: 17.486767, y: 47.449062, z: 9.434307}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -661,7 +661,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 182d2df8c5ff4544808f7b65b17a59b1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  terrainSize: 50
+  terrainSize: 10
   terrainParent: {fileID: 1817684740}
   chunkObject: {fileID: 4480448243231049190, guid: 649b64edaf196d64b80094718a2edf9a, type: 3}
   offset: {x: 0, y: 0}

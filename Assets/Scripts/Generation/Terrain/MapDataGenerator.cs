@@ -16,7 +16,7 @@ public class MapDataGenerator : MonoBehaviour
     public GenerationConfiguration GenerationConfiguration => generationConfiguration;
 
     [SerializeField] private int curveSampleCount = 512;
-    private const int chunkSize = 16;
+    private const int chunkSize = 40;
     public const int chunkHeight = 230;
     public const float threshold = 0;
     public const int resolution = 2;
