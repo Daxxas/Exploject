@@ -48,7 +48,7 @@ public class Biome : ScriptableObject
 public struct BiomeFeature
 {
     [SerializeField] public GameObject feature;
-    [SerializeField] public float density;
+    [SerializeField] public LayerMask layerMask;
     [SerializeField] public float minHeight;
     [SerializeField] public float maxHeight;
     [SerializeField] public float step;

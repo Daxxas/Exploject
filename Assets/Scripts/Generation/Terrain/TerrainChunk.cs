@@ -53,8 +53,7 @@ public class TerrainChunk : MonoBehaviour
     private NativeArray<float> generatedMap;
     private NativeArray<BiomeHolder> biomesForTerrainChunk;
     private NativeList<BiomeHolder> biomesInChunk;
-
-
+    
     public static void InitMarchCubeArrays()
     {
         if (!cornerIndexAFromEdge.IsCreated)
@@ -378,7 +377,14 @@ public class TerrainChunk : MonoBehaviour
                             Vector3 raycastOrigin = new Vector3(worldPosX, feature.maxHeight, worldPosZ);
 
                             float maxDistance = feature.maxHeight - feature.minHeight;
-                            Physics.Raycast(raycastOrigin, Vector3.down, out RaycastHit hit, maxDistance); // TODO : Add layermask
+                            
+                            Physics.Raycast(
+                                origin: raycastOrigin, 
+                                direction: Vector3.down, 
+                                hitInfo: out RaycastHit hit, 
+                                layerMask: feature.layerMask, 
+                                maxDistance: maxDistance); 
+                            
                             if (hit.collider != null)
                             {
                                 // We hit something, place feature
@@ -395,28 +401,6 @@ public class TerrainChunk : MonoBehaviour
                 }
             }
         }
-        //
-        // for (int x = 0; x < MapDataGenerator.ChunkSize+1; x++)
-        // {
-        //     for (int z = 0; z < MapDataGenerator.ChunkSize+1; z++)
-        //     {
-        //         int biomeX = x + resolution;
-        //         int biomeZ = z + resolution;
-        //         
-        //         int biomeIdx = (biomeX - 1) + MapDataGenerator.SupportedChunkSize * (biomeZ - 1);
-        //
-        //         BiomeHolder biomeAtPos = biomesForTerrainChunk[biomeIdx];   
-        //         
-        //         int2 pos = new int2((int)((biomeX - (resolution * 3 * chunkPos.x)) + (chunkPos.x * MapDataGenerator.SupportedChunkSize) - resolution), 
-        //             (int)((biomeZ - (resolution * 3 * chunkPos.y)) + (chunkPos.y * MapDataGenerator.SupportedChunkSize) - resolution));
-        //
-        //         GameObject s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        //         s.transform.parent = parent;
-        //         s.transform.position = new Vector3(pos.x, 30, pos.y);
-        //         s.transform.localScale = Vector3.one * 0.25f;
-        //         s.GetComponent<MeshRenderer>().material.color = new Color(biomeAtPos.color.x, biomeAtPos.color.y, biomeAtPos.color.z);
-        //     }
-        // } 
     }
 
     private unsafe NativeArray<int> GetTrianglesFromUnsafeList(UnsafeList<int> inputList)

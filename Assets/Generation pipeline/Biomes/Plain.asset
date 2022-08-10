@@ -17,7 +17,9 @@ MonoBehaviour:
   biomeMaterial: {fileID: 2100000, guid: 8ec157d12f52345409ad7dee286b967a, type: 2}
   features:
   - feature: {fileID: 5201569243863248398, guid: 876ef929cda978e45afec4d83a2b4f1f, type: 3}
-    density: 50
+    layerMask:
+      serializedVersion: 2
+      m_Bits: 64
     minHeight: 0
     maxHeight: 230
     step: 1
