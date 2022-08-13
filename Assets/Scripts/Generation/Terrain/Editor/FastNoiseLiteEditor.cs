@@ -44,11 +44,12 @@ public class FastNoiseLiteWindow : EditorWindow
 
         while (noiseProperty.Next(true))
         {
-            if (EditorHelper.GetTargetObjectOfProperty(noiseProperty) is FastNoiseLite)
+            if (noiseProperty.isExpanded && EditorHelper.GetTargetObjectOfProperty(noiseProperty) is FastNoiseLite)
             {
                 break;
             }
         }
+        
 
         noise = (FastNoiseLite) EditorHelper.GetTargetObjectOfProperty(noiseProperty);
         
@@ -59,7 +60,6 @@ public class FastNoiseLiteWindow : EditorWindow
         float minValue = 1;
         float mean = 0;
 
-        int valCount = 0;
         
         for (int x = 0; x < noisePreview.width; x++)
         {
@@ -83,12 +83,6 @@ public class FastNoiseLiteWindow : EditorWindow
                 float transformedVal = (val + 1) / 2;
                 Color color = new Color(transformedVal, transformedVal, transformedVal);
 
-                if (val > testThreshold)
-                {
-                    color = Color.green;
-                    valCount++;
-                }
-                
                 noisePreview.SetPixel(x, z, color);
             }
         }
@@ -103,9 +97,6 @@ public class FastNoiseLiteWindow : EditorWindow
         EditorGUILayout.FloatField("Min value", minValue);
         EditorGUILayout.FloatField("Mean", mean);
         testThreshold = EditorGUILayout.Slider("Threshold", testThreshold, -1f, 1f);
-        float value = ((float)valCount) / (noisePreview.width * noisePreview.height);
-        Debug.Log($"{valCount} / {(noisePreview.width * noisePreview.height)} = {value}");
-        EditorGUILayout.FloatField("%", value);
     }
     
     float testThreshold = 0f;

@@ -19,7 +19,7 @@ public class MapDataGenerator : MonoBehaviour
     private const int chunkSize = 40;
     public const int chunkHeight = 230;
     public const float threshold = 0;
-    public const int resolution = 2;
+    public const int resolution = 4;
     public static int ChunkSize => chunkSize;
     public static int SupportedChunkSize => ChunkSize + resolution * 3;
     

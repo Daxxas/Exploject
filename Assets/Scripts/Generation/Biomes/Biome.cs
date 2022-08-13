@@ -21,11 +21,12 @@ public class Biome : ScriptableObject
     public Color color;
 
     public Material biomeMaterial;
+    public float materialPriority;
     [SerializeField] [NonReorderable] public BiomeFeature[] features;
 
     public BiomeHolder GetBiomeHolder()
     {
-        return new BiomeHolder( new FixedString32Bytes(id), new float3(color.r, color.g, color.b));;
+        return new BiomeHolder( new FixedString32Bytes(id), new float4(color.r, color.g, color.b, color.a));;
     }
 
     public override string ToString()
@@ -66,10 +67,10 @@ public struct BiomeFeature
     }
 }
 
-[BurstCompile(CompileSynchronously = true)]
+[Serializable] [BurstCompile(CompileSynchronously = true)]
 public struct BiomeHolder : IEquatable<BiomeHolder>
 {
-    public BiomeHolder(FixedString32Bytes id, float3 color) //, UnsafeParallelHashSet<int> tags)
+    public BiomeHolder(FixedString32Bytes id, float4 color) //, UnsafeParallelHashSet<int> tags)
     {
         this.id = id;
         this.color = color;
@@ -77,7 +78,7 @@ public struct BiomeHolder : IEquatable<BiomeHolder>
     }
     
     public FixedString32Bytes id;
-    public float3 color;
+    public float4 color;
     // public UnsafeParallelHashSet<int> tags;
 
     public bool Equals(BiomeHolder other)

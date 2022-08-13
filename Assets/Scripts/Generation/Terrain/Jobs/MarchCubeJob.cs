@@ -21,14 +21,12 @@ public struct MarchCubeJob : IJobParallelFor
     public NativeArray<int> cornerIndexAFromEdge;
     [ReadOnly]
     public NativeArray<int> cornerIndexBFromEdge;
-    [ReadOnly]
-    public NativeArray<BiomeHolder> biomesForTerrainChunk;
     
     // Output
     [WriteOnly]
     public NativeQueue<Triangle>.ParallelWriter triangles;
     [WriteOnly]
-    public NativeParallelHashMap<Edge, float3>.ParallelWriter vertices;
+    public NativeParallelHashMap<Edge, Vertex>.ParallelWriter vertices;
 
     public int resolution;
     
@@ -125,9 +123,11 @@ public struct MarchCubeJob : IJobParallelFor
                 Edge edge = new Edge(marchCube[indexA].p, marchCube[indexB].p);
 
                 // Only one vertices can exist per edge
-                vertices.TryAdd(new Edge(marchCube[indexA].p, marchCube[indexB].p), FindVertexPos(
+                float3 vertexPos = FindVertexPos(
                     marchCube[indexA].p, marchCube[indexB].p, marchCube[indexA].val,
-                    marchCube[indexB].val) - new float3(resolution, resolution, resolution));
+                        marchCube[indexB].val) - new float3(resolution, resolution, resolution);
+                
+                vertices.TryAdd(new Edge(marchCube[indexA].p, marchCube[indexB].p), new Vertex(vertexPos, new float4(0,0,0,0)));
                 
                 // Keep edge for triangle, multiple triangles can reference the same edge
                 triangle[j] = edge;
@@ -138,7 +138,6 @@ public struct MarchCubeJob : IJobParallelFor
                 bool isBorderIndexB = marchCube[indexB].p.x < resolution || marchCube[indexB].p.z < resolution ||
                                   marchCube[indexB].p.x > MapDataGenerator.ChunkSize+(resolution) || marchCube[indexB].p.z > MapDataGenerator.ChunkSize+(resolution);
                 triangle.SetEdgeBorder(j, isBorderIndexA || isBorderIndexB);
-                triangle.biome = biomesForTerrainChunk[BiomeTo1D(xyz.x, xyz.z)];
             }
 
             // Triangles are stored in a queue because we don't know how many triangles we will get & we can write in parallel easily in a queue
@@ -197,6 +196,19 @@ public struct CubePoint
 {
     public int3 p;
     public float val;
+}
+
+public struct Vertex
+{
+    public float3 position;
+    public float4 color;
+    
+    //Constructor
+    public Vertex(float3 position, float4 color)
+    {
+        this.position = position;
+        this.color = color;
+    }
 }
 
 [BurstCompile(FloatPrecision.Standard, FloatMode.Fast, CompileSynchronously = true)]

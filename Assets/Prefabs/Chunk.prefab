@@ -48,7 +48,7 @@ MonoBehaviour:
   mf: {fileID: 7903912901442858191}
   mr: {fileID: 8286864514777851875}
   mc: {fileID: 1333622084074791053}
-  meshMaterial: {fileID: 2100000, guid: aea5e67c9b447254383c4b4b8f5604ca, type: 2}
+  chunkDebugMaterial: {fileID: 2100000, guid: c6e989044b9c85f4992cf454f5bf297c, type: 2}
   chunkLOD1: {fileID: 7947296746122708365}
 --- !u!1 &7947296746122708365
 GameObject:

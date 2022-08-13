@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Sirenix.OdinInspector;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
@@ -22,29 +23,42 @@ public class BiomeVisualizer : MonoBehaviour
         Debug.Log(biome);    
     }
     
-    [ContextMenu("Generate Texture")]
+    [Button]
     public void GenerateRandomTexture()
     {
         GenerationInfo.Seed = seed;
-        int textureSize = previewSize;
+        // int textureSize = previewSize;
+        int textureSize = previewSize * MapDataGenerator.SupportedChunkSize;
         Texture2D texture = new Texture2D(textureSize,textureSize);
         texture.filterMode = FilterMode.Point;
 
-        for (int x = 0; x < previewSize; x++)
+
+
+        for (int biomeX = 0; biomeX < previewSize; biomeX++)
         {
-            for (int z = 0; z < previewSize; z++)
+            for (int biomeZ = 0; biomeZ < previewSize; biomeZ++)
             {
-                Color pixelColor = biomeGenerator.GetBiomeAtPos(new int2(x, z)).color;
-                texture.SetPixel(x,z, pixelColor);
+                BiomeHolder[] biomes = biomeGenerator.GetBiomesForChunk(new Vector2(testpos.x + biomeX, testpos.y + biomeZ), 1);
+                
+                for (int x = 0; x < MapDataGenerator.SupportedChunkSize; x++)
+                {
+                    for (int z = 0; z < MapDataGenerator.SupportedChunkSize; z++)
+                    {
+                        int biomeIdx =  x + MapDataGenerator.SupportedChunkSize * z;
+                        
+                        Color pixelColor = new Color(biomes[biomeIdx].color.x, biomes[biomeIdx].color.y, biomes[biomeIdx].color.z, biomes[biomeIdx].color.w);
+                        texture.SetPixel(x + (biomeX * MapDataGenerator.SupportedChunkSize),z + (biomeZ * MapDataGenerator.SupportedChunkSize), pixelColor);
+                    }
+                }
             }
         }
-        
-    
+
         texture.Apply();
     
         GetComponent<Renderer>().sharedMaterial.mainTexture = texture;
     }
 
+    [Button]
     public void ResetVisualization()
     {
         transform.localScale = Vector3.one;

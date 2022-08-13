@@ -12,7 +12,7 @@ public class GenerationConfiguration : ScriptableObject
     [SerializeField] public FastNoiseLite yContinentalness;
     [SerializeField] public FastNoiseLite yPeaksValleys;
     [Space(10)]
-    [Header("Squashiness")]
+    [Header("Squashiness")] 
     [SerializeField] public FastNoiseLite squashContinentalness;
     [SerializeField] public FastNoiseLite squashPeaksValleys;
     [Header("Biomes")]

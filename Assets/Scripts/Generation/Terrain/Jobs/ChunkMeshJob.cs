@@ -16,12 +16,13 @@ public struct ChunkMeshJob : IJob
         [Unity.Collections.ReadOnly]
         public NativeArray<BiomeHolder> biomesInChunk;
         [Unity.Collections.ReadOnly] [NativeDisableParallelForRestriction]
-        public NativeParallelHashMap<Edge, float3> uniqueVertices;
+        public NativeParallelHashMap<Edge, Vertex> uniqueVertices;
         [Unity.Collections.ReadOnly]
         public NativeArray<float> map;
         // Output
         public NativeList<Vector3> chunkVertices;
-        public NativeParallelHashMap<BiomeHolder, UnsafeList<int>> chunkTriangles;
+        public NativeList<Color> chunkVerticesColors;
+        public NativeList<int> chunkTriangles;
         public NativeList<Vector3> chunkNormals;
 
         public int resolution;
@@ -44,10 +45,10 @@ public struct ChunkMeshJob : IJob
             int chunkVerticesIndices = 0;
             int borderVerticesIndices = -1;
 
-            for (int i = 0; i < biomesInChunk.Length; i++)
-            {
-                chunkTriangles.Add(biomesInChunk[i], new UnsafeList<int>(supposedVertexCount * 3, Allocator.TempJob));
-            }
+            // for (int i = 0; i < biomesInChunk.Length; i++)
+            // {
+            //     chunkTriangles.Add(biomesInChunk[i], new UnsafeList<int>(supposedVertexCount * 3, Allocator.TempJob));
+            // }
 
             while (triangles.TryDequeue(out Triangle triangle))
             {
@@ -73,7 +74,7 @@ public struct ChunkMeshJob : IJob
                         if (matchingIndices.TryAdd(triangle[i], borderVerticesIndices))
                         {
                             // add vertex to borderVertices for futur normal calculation
-                            borderVertices.Add(uniqueVertices[triangle[i]]);
+                            borderVertices.Add(uniqueVertices[triangle[i]].position);
                             // add vertex index to borderTriangles
                             borderTriangles.Add(borderVerticesIndices);
                             // borderVerticesIndices is a negative index, so we decrement it
@@ -93,13 +94,12 @@ public struct ChunkMeshJob : IJob
                             // if it's a vertex we don't know, add it to chunkVertices no matter if the vertex comes from
                             // a border triangle or not.
                             // If the vertex comes from a border triangle, it's ok, it will be part of a triangle through a mesh chunk triangle
-                            chunkVertices.Add(uniqueVertices[triangle[i]]);
-
+                            chunkVertices.Add(uniqueVertices[triangle[i]].position);
+                            chunkVerticesColors.Add(new Color(uniqueVertices[triangle[i]].color.x, uniqueVertices[triangle[i]].color.y, uniqueVertices[triangle[i]].color.z, uniqueVertices[triangle[i]].color.w));
+                            
                             if (!triangle.isBorderTriangle)
                             {
-                                var list = chunkTriangles[triangle.biome];
-                                list.Add(chunkVerticesIndices);
-                                chunkTriangles[triangle.biome] = list;
+                                chunkTriangles.Add(chunkVerticesIndices);
                             }
                             else
                             {
@@ -116,9 +116,7 @@ public struct ChunkMeshJob : IJob
                             // Same logic as commment above
                             if (!triangle.isBorderTriangle)
                             {
-                                var list = chunkTriangles[triangle.biome];
-                                list.Add(matchingIndices[triangle[i]]);
-                                chunkTriangles[triangle.biome] = list;
+                                chunkTriangles.Add(matchingIndices[triangle[i]]);
                             }
                             else
                             {
@@ -149,7 +147,7 @@ public struct ChunkMeshJob : IJob
             matchingIndices.Dispose();
         }
 
-        private void CalculateNormals(NativeArray<Vector3> vertices, NativeArray<Vector3> borderVertices, NativeArray<int> borderTriangles, NativeParallelHashMap<BiomeHolder, UnsafeList<int>> triangles, NativeArray<Vector3> normals)
+        private void CalculateNormals(NativeArray<Vector3> vertices, NativeArray<Vector3> borderVertices, NativeArray<int> borderTriangles, NativeArray<int> triangles, NativeArray<Vector3> normals)
         {
             // Loop through border triangles
             for (int i = 0; i < borderTriangles.Length / 3; i++)
@@ -177,27 +175,23 @@ public struct ChunkMeshJob : IJob
             }
             
             // Loop through chunk triangles
-            foreach (var biomeTriangles in triangles)
+            for (int i = 0; i < triangles.Length  / 3; i++)
             {
-                for (int i = 0; i < biomeTriangles.Value.Length  / 3; i++)
-                {
-                    int normalTriangleIndex = i * 3;
-                    int vertexIndexA = biomeTriangles.Value[normalTriangleIndex];
-                    int vertexIndexB = biomeTriangles.Value[normalTriangleIndex+1];
-                    int vertexIndexC = biomeTriangles.Value[normalTriangleIndex+2];
+                int normalTriangleIndex = i * 3;
+                int vertexIndexA = triangles[normalTriangleIndex];
+                int vertexIndexB = triangles[normalTriangleIndex+1];
+                int vertexIndexC = triangles[normalTriangleIndex+2];
 
-                    Vector3 triangleNormal = SurfaceNormal(vertexIndexA, vertexIndexB, vertexIndexC, vertices, borderVertices);
-                    // normals are set to 0 beforehand to avoid unpredictable issues
-                    normals[vertexIndexA] += triangleNormal;
-                    normals[vertexIndexB] += triangleNormal;
-                    normals[vertexIndexC] += triangleNormal;
-                }
+                Vector3 triangleNormal = SurfaceNormal(vertexIndexA, vertexIndexB, vertexIndexC, vertices, borderVertices);
+                // normals are set to 0 beforehand to avoid unpredictable issues
+                normals[vertexIndexA] += triangleNormal;
+                normals[vertexIndexB] += triangleNormal;
+                normals[vertexIndexC] += triangleNormal;
+            }
                 
-                for (int i = 0; i < normals.Length; i++)
-                {
-                    math.normalize(normals[i]);
-                }
-                
+            for (int i = 0; i < normals.Length; i++)
+            {
+                math.normalize(normals[i]);
             }
             
         }
