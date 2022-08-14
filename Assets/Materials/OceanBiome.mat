@@ -110,6 +110,7 @@ Material:
     - _Glossiness: 0
     - _GlossyReflections: 0
     - _Metallic: 0
+    - _NoiseScale: 60
     - _OcclusionStrength: 1
     - _Parallax: 0.005
     - _Priority: 0
@@ -125,6 +126,7 @@ Material:
     - _ZWrite: 1
     - _biomeBlending: 0.58
     - _blendSharpness: 0.99
+    - _transparency: 1
     m_Colors:
     - _BaseColor: {r: 0, g: 0.35857058, b: 1, a: 1}
     - _Color: {r: 0, g: 0.35857055, b: 1, a: 1}
