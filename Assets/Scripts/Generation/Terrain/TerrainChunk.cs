@@ -19,7 +19,6 @@ public class TerrainChunk : MonoBehaviour
     [SerializeField] private MeshFilter mf;
     [SerializeField] private MeshRenderer mr;
     [SerializeField] private MeshCollider mc;
-    [SerializeField] private Material chunkDebugMaterial;
 
     private Vector2 position;
     public Vector2 Position => position;
@@ -48,6 +47,7 @@ public class TerrainChunk : MonoBehaviour
 
     // TODO : Dynamic LOD System
     [SerializeField] private GameObject chunkLOD1;
+    [SerializeField] private Transform featuresParent;
     
     private NativeQueue<Triangle> triangles;
     private NativeParallelHashMap<Edge, Vertex> uniqueVertices;
@@ -128,6 +128,7 @@ public class TerrainChunk : MonoBehaviour
     public void SetVisible(bool visible)
     {
         chunkLOD1.SetActive(visible);
+        featuresParent.gameObject.SetActive(visible);
     }
 
     /// <summary>
@@ -295,23 +296,14 @@ public class TerrainChunk : MonoBehaviour
             
             
             // TODO : Trouver un moyen de définir l'ordre des materials des biomes dans le chunk
-            SortedList<float, Material> chunkMaterials = new SortedList<float, Material>(biomesInChunk.Length);
-            foreach (var biome in biomesInChunk)
+            Material[] chunkMaterials = new Material[biomesInChunk.Length];
+            for (int i = biomesInChunk.Length-1; i >= 0; i--)
             {
-                chunkMaterials.Add(BiomeGenerator.Instance.GetBiomeFromId(biome.id).materialPriority, BiomeGenerator.Instance.GetBiomeFromId(biome.id).biomeMaterial);
+                var biome = biomesInChunk[i];   
+                chunkMaterials[i] = BiomeGenerator.Instance.GetBiomeFromId(biome.id).biomeMaterial;
             }
 
-            Material[] finalMaterials = new Material[biomesInChunk.Length];
-
-            int finalMaterialIndex = chunkMaterials.Count - 1;
-            foreach (var material in chunkMaterials)
-            {
-                finalMaterials[finalMaterialIndex] = material.Value;
-                finalMaterialIndex--;
-            }
-
-            mr.materials = finalMaterials;
-            mr.materials[0].SetFloat("_Priority", 1);
+            mr.materials = chunkMaterials;
             
             mesh.SetVertices(verts.ToArray());
             mesh.SetColors(colors.ToArray());
@@ -337,7 +329,7 @@ public class TerrainChunk : MonoBehaviour
             verts.Dispose(colliderJobHandle);
             normals.Dispose(colliderJobHandle);
             chunkTriangles.Dispose(colliderJobHandle);
-            chunkColors.Dispose();
+            colors.Dispose(colliderJobHandle);
             safeToRemove = true;
             
             StartCoroutine(ApplyFeatures(biomesInChunk, biomesForTerrainChunk, colliderJobHandle));
@@ -357,10 +349,6 @@ public class TerrainChunk : MonoBehaviour
     
     public void GenerateChunkFeatures(NativeList<BiomeHolder> biomesInChunk, NativeArray<BiomeHolder> biomesForTerrainChunk)
     {
-        Transform parent = new GameObject("Features").transform;
-        
-        parent.parent = transform;
-        
         foreach (var biomeHolder in biomesInChunk)
         {
             Biome biome = BiomeGenerator.Instance.GetBiomeFromId(biomeHolder.id);
@@ -407,7 +395,7 @@ public class TerrainChunk : MonoBehaviour
                             if (hit.collider != null)
                             {
                                 // We hit something, place feature
-                                feature.GenerateFeature(parent, hit.point);
+                                feature.GenerateFeature(featuresParent, hit.point);
                             }
                         }
                     }
