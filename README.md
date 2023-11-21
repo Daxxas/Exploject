@@ -16,6 +16,9 @@ The core generation of a chunk is done in 3 step here: ```Assets/Scripts/Generat
 
 The endless terrain is done here ([Go to file](https://github.com/Daxxas/Exploject/blob/main/Assets/Scripts/Generation/Terrain/EndlessTerrain.cs))
 
+
+
 Preview of the project:
+
 https://github.com/Daxxas/Exploject/assets/21078787/2542d5ae-12d9-4169-b087-0a3236b2c243
 
